@@ -11,6 +11,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 const W = 760;
 const H = 470;
+const TOP_PAD = 18;         // breathing room above the supply wires
+const HT = H + TOP_PAD;     // full canvas height
 const PX_PER_CM = 38;
 const PLATE_TOP = 60;
 const PLATE_BOTTOM = 330;
@@ -19,7 +21,7 @@ const MAX_PD = 5000;
 
 const XC = 312;             // centre line of the plates (shifted left)
 const WIRE_NEG_Y = 10;      // − supply wire runs along here (to the far, earthed plate)
-const WIRE_POS_Y = 22;      // + supply wire runs along here
+const WIRE_POS_Y = 26;      // + supply wire runs along here
 const EHT_X = 570, EHT_Y = 34, EHT_W = 182; // EHT supply, in canvas units (top right)
 const ROD = 60;            // metal rod length, tip to handle (fixed)
 const HANDLE_H = 36;        // insulating handle, moves with the probe
@@ -27,14 +29,15 @@ const handleTop = (tipY) => tipY + 8 + ROD;
 const handleBot = (tipY) => tipY + 8 + ROD + HANDLE_H;
 const WIRE_LOW = 440;       // the slack lead never hangs below this
 const LEAD_Y = 420;         // lead from probe to meter
-const MX = 716;             // electroscope centre x
 // voltmeter + series resistor, centred as a group in the space right of the + plate
 // (between the plate's outermost position, x = 556, and the edge, x = 760)
 const VMX = 679;            // voltmeter centre x
 const RES_X0 = VMX - 76, RES_X1 = VMX - 32; // series resistor in the lead
+const MX = VMX;             // electroscope sits in the same place as the voltmeter
+const ES_WIRE_X = MX + 49;  // lead runs up the right of the electroscope to its cap
 const VM_Y = 370;           // voltmeter centre y
 const TIP_MIN = 115, TIP_MAX = 300, TIP_DEFAULT = 186;
-const ES_CAP = 236;         // electroscope cap height
+const ES_CAP = 292;         // electroscope cap height (case bottom at 396, clear of the lead)
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -167,7 +170,7 @@ function leadPath(objX, tipY, meter) {
   const pts = [[objX, tipY + 8]];
   for (let i = 0; i <= 20; i++) pts.push(bez(c, i / 20));
   return pts.concat(meter === "electroscope"
-    ? [[660, LEAD_Y], [660, ES_CAP + 4], [MX - 15, ES_CAP + 4]]
+    ? [[ES_WIRE_X, LEAD_Y], [ES_WIRE_X, ES_CAP + 4], [MX + 15, ES_CAP + 4]]
     : [[VMX - 20, LEAD_Y], [VMX - 20, VM_Y + 22]]);
 }
 
@@ -209,8 +212,7 @@ export default function App() {
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvas.height = HT * dpr;
 
     // keep the supply wires lined up with the panel's terminals at any width
     const measure = () => {
@@ -338,9 +340,10 @@ export default function App() {
       s.flashes = s.flashes.filter((f) => f.t > 0);
 
       /* ================= DRAW ================= */
-      ctx.clearRect(0, 0, W, H);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = "#f8fafc";
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, 0, W, HT);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, dpr * TOP_PAD); // everything below is drawn shifted down
 
       // supply wires from the EHT terminals (panel sits just above the canvas)
       ctx.strokeStyle = "#475569";
@@ -588,9 +591,9 @@ export default function App() {
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(MX + 24, caseB);
-          ctx.lineTo(MX + 24, caseB + 10);
+          ctx.lineTo(MX + 24, caseB + 8);
           ctx.stroke();
-          drawEarth(ctx, MX + 24, caseB + 10);
+          drawEarth(ctx, MX + 24, caseB + 8);
           ctx.fillStyle = "#e2e8f0";
           ctx.strokeStyle = "#475569";
           ctx.beginPath();
@@ -635,8 +638,8 @@ export default function App() {
           }
           ctx.font = "10.5px system-ui, sans-serif";
           ctx.fillStyle = "#475569";
-          ctx.textAlign = "right";
-          ctx.fillText("gold-leaf electroscope", W - 8, ES_CAP - 10);
+          ctx.textAlign = "center";
+          ctx.fillText("gold-leaf electroscope", MX, ES_CAP - 10);
         }
       } else {
         /* ---- candle only ---- */
@@ -839,7 +842,7 @@ export default function App() {
 
   const toCanvas = (e) => {
     const r = canvasRef.current.getBoundingClientRect();
-    return { cx: ((e.clientX - r.left) / r.width) * W, cy: ((e.clientY - r.top) / r.height) * H };
+    return { cx: ((e.clientX - r.left) / r.width) * W, cy: ((e.clientY - r.top) / r.height) * HT - TOP_PAD };
   };
   const objNow = () => {
     const pc = params.current;
@@ -977,8 +980,8 @@ export default function App() {
       <div className="layout">
         <div className="left">
           <div className="rig">
-            <div className="overlay" style={{ width: W, height: H, transform: `scale(${scale})` }}>
-            <div className="eht" style={{ left: EHT_X, top: EHT_Y, width: EHT_W }}>
+            <div className="overlay" style={{ width: W, height: HT, transform: `scale(${scale})` }}>
+            <div className="eht" style={{ left: EHT_X, top: EHT_Y + TOP_PAD, width: EHT_W }}>
               <div className="eht-head">
                 <b>EHT SUPPLY</b>
                 <span className={pd > 0 ? "led on" : "led"} title={pd > 0 ? "output on" : "output off"} />
@@ -1012,7 +1015,7 @@ export default function App() {
               onKeyDown={onKeyDown}
               style={{
                 width: "100%",
-                aspectRatio: `${W} / ${H}`,
+                aspectRatio: `${W} / ${HT}`,
                 cursor: dragging ? "grabbing" : hover ? "grab" : "default",
                 touchAction: "none",
               }}
