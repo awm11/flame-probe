@@ -10,30 +10,34 @@ import React, { useEffect, useRef, useState } from "react";
    ========================================================================= */
 
 const W = 760;
-const H = 500;
+const H = 470;
 const PX_PER_CM = 38;
-const PLATE_TOP = 80;
-const PLATE_BOTTOM = 350;
+const PLATE_TOP = 60;
+const PLATE_BOTTOM = 330;
 const PLATE_W = 16;
 const MAX_PD = 5000;
 
-const WIRE_Y = 22;          // supply wires run along here
-const ROD = 100;            // metal rod length, tip to handle (fixed)
+const XC = 312;             // centre line of the plates (shifted left)
+const WIRE_NEG_Y = 10;      // − supply wire runs along here (to the far, earthed plate)
+const WIRE_POS_Y = 22;      // + supply wire runs along here
+const EHT_X = 570, EHT_Y = 34, EHT_W = 182; // EHT supply, in canvas units (top right)
+const ROD = 60;            // metal rod length, tip to handle (fixed)
 const HANDLE_H = 36;        // insulating handle, moves with the probe
 const handleTop = (tipY) => tipY + 8 + ROD;
 const handleBot = (tipY) => tipY + 8 + ROD + HANDLE_H;
-const WIRE_LOW = 476;       // the slack lead never hangs below this
-const LEAD_Y = 448;         // lead from probe to meter
+const WIRE_LOW = 440;       // the slack lead never hangs below this
+const LEAD_Y = 420;         // lead from probe to meter
 const RES_X0 = 600, RES_X1 = 644; // series resistor in the lead
-const MX = 706;             // meter / electroscope centre x
-const VM_Y = 398;           // voltmeter centre y
-const TIP_MIN = 135, TIP_MAX = 312, TIP_DEFAULT = 206;
+const MX = 716;             // meter / electroscope centre x
+const VM_Y = 216;           // voltmeter centre y
+const TIP_MIN = 115, TIP_MAX = 300, TIP_DEFAULT = 186;
+const ES_CAP = 236;         // electroscope cap height
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function geometry(sep) {
   const gap = sep * PX_PER_CM;
-  return { gap, leftX: W / 2 - gap / 2, rightX: W / 2 + gap / 2 };
+  return { gap, leftX: XC - gap / 2, rightX: XC + gap / 2 };
 }
 
 /* ---------- drawing helpers ---------- */
@@ -160,7 +164,7 @@ function leadPath(objX, tipY, meter) {
   const pts = [[objX, tipY + 8]];
   for (let i = 0; i <= 20; i++) pts.push(bez(c, i / 20));
   return pts.concat(meter === "electroscope"
-    ? [[652, LEAD_Y], [652, 340], [MX - 15, 340]]
+    ? [[652, LEAD_Y], [652, ES_CAP + 4], [MX - 15, ES_CAP + 4]]
     : [[MX - 20, LEAD_Y], [MX - 20, VM_Y + 22]]);
 }
 
@@ -186,13 +190,10 @@ export default function App() {
   const [hover, setHover] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [explainOpen, setExplainOpen] = useState(true);
+  const [scale, setScale] = useState(1); // canvas display scale, for the HTML overlay
 
   const canvasRef = useRef(null);
   const drag = useRef(null); // active drag gesture (see pointer handlers)
-  // x of the EHT terminals in canvas units, measured from the HTML panel
-  const terms = useRef({ l: W * 0.42, r: W * 0.58 });
-  const termL = useRef(null);
-  const termR = useRef(null);
   const sim = useRef({
     ions: [], probeV: 0, t: 0, spawnAcc: 0, lastUi: 0,
     capture: [], wireE: [], flashes: [], capAcc: 0, eAcc: 0, flux: 0, dV: 0,
@@ -210,17 +211,12 @@ export default function App() {
 
     // keep the supply wires lined up with the panel's terminals at any width
     const measure = () => {
-      const cr = canvas.getBoundingClientRect();
-      if (!cr.width || !termL.current || !termR.current) return;
-      const mid = (el) => {
-        const r = el.getBoundingClientRect();
-        return ((r.left + r.width / 2 - cr.left) / cr.width) * W;
-      };
-      terms.current = { l: mid(termL.current), r: mid(termR.current) };
+      const w = canvas.getBoundingClientRect().width;
+      if (w) setScale(w / W);
     };
     measure();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    if (ro) { ro.observe(canvas); ro.observe(termL.current.parentElement); }
+    if (ro) ro.observe(canvas);
     window.addEventListener("resize", measure);
 
     let raf;
@@ -243,7 +239,7 @@ export default function App() {
 
       /* ---- flame geometry for this frame ---- */
       const flameOnNow = !probe || p.flameOn;
-      const flameBaseY = probe ? tipY + 6 : 292;
+      const flameBaseY = probe ? tipY + 6 : 272;
       const flameH = probe ? 34 : 70;
       const bendAmt = clamp(e / 5, 0, 1);
 
@@ -347,19 +343,20 @@ export default function App() {
       ctx.strokeStyle = "#475569";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      const { l: TERM_L, r: TERM_R } = terms.current;
-      ctx.moveTo(TERM_L, 0); ctx.lineTo(TERM_L, WIRE_Y);
-      ctx.lineTo(leftX - PLATE_W / 2, WIRE_Y); ctx.lineTo(leftX - PLATE_W / 2, PLATE_TOP);
-      ctx.moveTo(TERM_R, 0); ctx.lineTo(TERM_R, WIRE_Y);
-      ctx.lineTo(rightX + PLATE_W / 2, WIRE_Y); ctx.lineTo(rightX + PLATE_W / 2, PLATE_TOP);
+      // − terminal (rightmost) → over the top → earthed plate; + terminal → + plate
+      const TERM_NEG = EHT_X + EHT_W - 22, TERM_POS = EHT_X + EHT_W - 50; // match .term CSS
+      ctx.moveTo(TERM_NEG, EHT_Y); ctx.lineTo(TERM_NEG, WIRE_NEG_Y);
+      ctx.lineTo(leftX - PLATE_W / 2, WIRE_NEG_Y); ctx.lineTo(leftX - PLATE_W / 2, PLATE_TOP);
+      ctx.moveTo(TERM_POS, EHT_Y); ctx.lineTo(TERM_POS, WIRE_POS_Y);
+      ctx.lineTo(rightX + PLATE_W / 2, WIRE_POS_Y); ctx.lineTo(rightX + PLATE_W / 2, PLATE_TOP);
       ctx.stroke();
 
       // earth on the 0 V plate
       ctx.beginPath();
       ctx.moveTo(leftX - PLATE_W / 2, PLATE_BOTTOM);
-      ctx.lineTo(leftX - PLATE_W / 2, 440);
+      ctx.lineTo(leftX - PLATE_W / 2, 404);
       ctx.stroke();
-      drawEarth(ctx, leftX - PLATE_W / 2, 440);
+      drawEarth(ctx, leftX - PLATE_W / 2, 404);
 
       // field lines: uniform in the middle, bulging outward at the edges
       if (p.showField && p.pd > 0) {
@@ -378,7 +375,7 @@ export default function App() {
           ctx.moveTo(rightX - 2, ye);
           ctx.bezierCurveTo(rightX - 0.15 * gap, ye + dir * c * 1.6, leftX + 0.15 * gap, ye + dir * c * 1.6, leftX + 2, ye);
           ctx.stroke();
-          arrowHead(ctx, W / 2, ye + dir * c * 1.2, Math.PI, col);
+          arrowHead(ctx, XC, ye + dir * c * 1.2, Math.PI, col);
         });
       }
 
@@ -435,15 +432,15 @@ export default function App() {
       ctx.font = "bold 12px system-ui, sans-serif";
       ctx.fillStyle = "#1d4ed8";
       ctx.textAlign = "right";
-      ctx.fillText("0 V", leftX - PLATE_W - 6, PLATE_TOP + 10);
-      ctx.fillText("(earthed)", leftX - PLATE_W - 6, PLATE_TOP + 26);
+      ctx.fillText("0 V", leftX - PLATE_W - 6, PLATE_TOP + 112);
+      ctx.fillText("(earthed)", leftX - PLATE_W - 6, PLATE_TOP + 128);
       ctx.fillStyle = "#b91c1c";
       ctx.textAlign = "left";
-      ctx.fillText(`+${p.pd} V`, rightX + PLATE_W + 6, PLATE_TOP + 10);
+      ctx.fillText(`+${p.pd} V`, rightX + PLATE_W + 6, PLATE_TOP + 112);
 
       // separation marker along the very bottom
       {
-        const yM = 486;
+        const yM = 456;
         ctx.strokeStyle = "#64748b";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -456,9 +453,9 @@ export default function App() {
         const label = `d = ${p.sep} cm`;
         const tw = ctx.measureText(label).width + 10;
         ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(W / 2 - tw / 2, yM - 8, tw, 16);
+        ctx.fillRect(XC - tw / 2, yM - 8, tw, 16);
         ctx.fillStyle = "#475569";
-        ctx.fillText(label, W / 2, yM + 0.5);
+        ctx.fillText(label, XC, yM + 0.5);
       }
 
       // guide line while a drag is locked to one axis
@@ -579,7 +576,7 @@ export default function App() {
           ctx.fillText("high-R voltmeter", MX, VM_Y - 42);
         } else {
           /* ---- gold-leaf electroscope ---- */
-          const caseT = 360, caseB = 440;
+          const caseT = ES_CAP + 24, caseB = ES_CAP + 104;
           // earthed case
           ctx.strokeStyle = "#475569";
           ctx.lineWidth = 2;
@@ -604,16 +601,16 @@ export default function App() {
           ctx.strokeStyle = "#a16207";
           ctx.lineWidth = 3;
           ctx.beginPath();
-          ctx.moveTo(MX, 342);
-          ctx.lineTo(MX, 418); // stem + fixed plate
+          ctx.moveTo(MX, ES_CAP + 6);
+          ctx.lineTo(MX, ES_CAP + 82); // stem + fixed plate
           ctx.stroke();
           ctx.fillStyle = "#a16207";
           ctx.beginPath();
-          ctx.roundRect(MX - 15, 336, 30, 7, 2);
+          ctx.roundRect(MX - 15, ES_CAP, 30, 7, 2);
           ctx.fill();
           // gold leaf hinged near the bottom of the stem
           const th = leafAngle(s.probeV);
-          const hx = MX + 1.5, hy = 384, L = 32;
+          const hx = MX + 1.5, hy = ES_CAP + 48, L = 32;
           ctx.strokeStyle = "#eab308";
           ctx.lineWidth = 3.5;
           ctx.beginPath();
@@ -633,7 +630,7 @@ export default function App() {
           ctx.font = "10.5px system-ui, sans-serif";
           ctx.fillStyle = "#475569";
           ctx.textAlign = "right";
-          ctx.fillText("gold-leaf electroscope", W - 8, 326);
+          ctx.fillText("gold-leaf electroscope", W - 8, ES_CAP - 10);
         }
       } else {
         /* ---- candle only ---- */
@@ -641,14 +638,14 @@ export default function App() {
         ctx.strokeStyle = "#d6b46a";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.roundRect(objX - 15, 300, 30, 138, 3);
+        ctx.roundRect(objX - 15, 280, 30, 138, 3);
         ctx.fill();
         ctx.stroke();
         ctx.strokeStyle = "#1f2937";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(objX, 300);
-        ctx.lineTo(objX, 288);
+        ctx.moveTo(objX, 280);
+        ctx.lineTo(objX, 268);
         ctx.stroke();
 
         // main lobe pulled toward − plate; at high field a distinct second
@@ -675,11 +672,11 @@ export default function App() {
         ctx.font = "11px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("candle", objX, 458);
+        ctx.fillText("candle", objX, 432);
 
         // ◀ ▶ drag handle on the candle
         ctx.fillStyle = "rgba(15,23,42,0.5)";
-        const hy = 420, off = 22;
+        const hy = 396, off = 22;
         ctx.beginPath();
         ctx.moveTo(objX - off - 9, hy); ctx.lineTo(objX - off, hy - 7); ctx.lineTo(objX - off, hy + 7);
         ctx.closePath();
@@ -782,7 +779,7 @@ export default function App() {
 
         if (flowing) {
           const lx = clamp(objX, leftX + 95, rightX - 95);
-          const ly = tipY > 200 ? tipY - 72 : tipY + 66;
+          const ly = tipY > PLATE_TOP + 120 ? tipY - 72 : tipY + 66;
           ctx.font = "bold 12px system-ui, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -845,7 +842,7 @@ export default function App() {
   };
   const nearObject = (cx, cy) => {
     const { x, y } = objNow();
-    if (params.current.mode === "candle") return Math.abs(cx - x) < 30 && cy > 200 && cy < 442;
+    if (params.current.mode === "candle") return Math.abs(cx - x) < 30 && cy > 180 && cy < 420;
     return Math.abs(cx - x) < 26 && cy > y - 45 && cy < handleBot(y) + 4;
   };
   const place = (x, y) => {
@@ -974,7 +971,8 @@ export default function App() {
       <div className="layout">
         <div className="left">
           <div className="rig">
-            <div className="eht">
+            <div className="overlay" style={{ width: W, height: H, transform: `scale(${scale})` }}>
+            <div className="eht" style={{ left: EHT_X, top: EHT_Y, width: EHT_W }}>
               <div className="eht-head">
                 <b>EHT SUPPLY</b>
                 <span className={pd > 0 ? "led on" : "led"} title={pd > 0 ? "output on" : "output off"} />
@@ -990,8 +988,9 @@ export default function App() {
                 <input type="range" min="0" max={MAX_PD} step="100" value={pd}
                   onChange={(e) => setPd(+e.target.value)} aria-label={`EHT output p.d., ${pd} volts`} />
               </label>
-              <span ref={termL} className="term neg" title="negative terminal (earthed)">−</span>
-              <span ref={termR} className="term pos" title="positive terminal">+</span>
+              <span className="term pos" title="positive terminal">+</span>
+              <span className="term neg" title="negative terminal (earthed)">−</span>
+            </div>
             </div>
             <canvas
               ref={canvasRef}
@@ -1034,6 +1033,11 @@ export default function App() {
         <aside className="right">
           <div className="panel-row">
           <div className="controls">
+            <label className="pd-mobile">
+              <span>p.d. between plates: <b>{pd} V</b></span>
+              <input type="range" min="0" max={MAX_PD} step="100" value={pd}
+                onChange={(e) => setPd(+e.target.value)} aria-label="p.d. between plates" />
+            </label>
             <label>
               <span>Plate separation d: <b>{sep} cm</b></span>
               <input className="sep-slider" type="range" min="5" max="12" step="1" value={sep}
@@ -1330,8 +1334,9 @@ const css = `
 .fp-app .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 16px; }
 @media (max-width: 900px) { .fp-app .layout { grid-template-columns: 1fr; } }
 
-.fp-app .rig { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding-top: 10px; overflow: hidden; }
-.fp-app .eht { position: relative; width: 30%; min-width: 196px; max-width: 250px; margin: 0 auto;
+.fp-app .rig { position: relative; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+.fp-app .overlay { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; z-index: 1; }
+.fp-app .eht { position: absolute; pointer-events: auto;
   background: linear-gradient(#fdba74, #f97316 60%, #ea580c); border: 1px solid #9a3412;
   border-radius: 7px; padding: 5px 8px 13px; color: #1c1917;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 3px 0 #9a3412, 0 4px 8px rgba(0,0,0,0.15); }
@@ -1349,11 +1354,11 @@ const css = `
 .fp-app .eht-slider { display: flex !important; align-items: center; gap: 6px; margin-top: 5px; font-size: 9.5px;
   font-weight: 700; letter-spacing: 0.08em; }
 .fp-app .eht-slider input { flex: 1; min-width: 0; accent-color: #292524; }
-.fp-app .term { position: absolute; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
+.fp-app .term { position: absolute; top: -10px; width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;
   color: #fff; line-height: 1; box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4); }
-.fp-app .term.neg { right: 30%; transform: translateX(50%); background: #262626; }
-.fp-app .term.pos { right: 11%; transform: translateX(50%); background: #dc2626; }
+.fp-app .term.neg { right: 12px; background: #262626; }
+.fp-app .term.pos { right: 40px; background: #dc2626; }
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
 
@@ -1368,6 +1373,8 @@ const css = `
 .fp-app .pad button:disabled { opacity: 0.35; cursor: default; }
 .fp-app .pad-up { grid-area: up; } .fp-app .pad-down { grid-area: down; }
 .fp-app .pad-left { grid-area: left; } .fp-app .pad-right { grid-area: right; }
+.fp-app .pd-mobile { display: none !important; }
+@media (max-width: 600px) { .fp-app .pd-mobile { display: grid !important; } }
 .fp-app .panel-row { display: grid; gap: 12px; align-items: start; }
 .fp-app .controls { background: #fff; border-radius: 12px; padding: 12px 14px;
   border: 1px solid #e2e8f0; display: grid; gap: 10px; align-content: start; }
