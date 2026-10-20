@@ -184,6 +184,7 @@ export default function App() {
   const [settling, setSettling] = useState(false);
   const [hover, setHover] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(true);
 
   const canvasRef = useRef(null);
   const drag = useRef(null); // active drag gesture (see pointer handlers)
@@ -1058,18 +1059,33 @@ export default function App() {
             )}
           </div>
 
+        </div>
+
+        <aside className="right">
+          <section className={explainOpen ? "explain" : "explain min"}>
+            <div className="explain-bar">
+              <span>Explanation</span>
+              <button
+                className="min-btn"
+                onClick={() => setExplainOpen((o) => !o)}
+                aria-expanded={explainOpen}
+                aria-label={explainOpen ? "Minimise explanation" : "Expand explanation"}
+                title={explainOpen ? "Minimise" : "Expand"}
+              >
+                {explainOpen ? "−" : "+"}
+              </button>
+            </div>
+            {explainOpen && (mode === "probe" ? <ProbeText meter={meter} /> : <CandleText />)}
+            <div className="key">
+            <span><i className="dot pos">+</i> positive ion</span>
+            <span><i className="dot neg">−</i> negative ion / electron</span>
+              {mode === "probe" && <span><i className="dot el">−</i> electron in metal lead</span>}
+            </div>
+          </section>
+
           {mode === "probe" && (
             <Graph pd={pd} sep={sep} x={x} reading={reading} meter={meter} />
           )}
-        </div>
-
-        <aside className="explain">
-          {mode === "probe" ? <ProbeText meter={meter} /> : <CandleText />}
-          <div className="key">
-            <span><i className="dot pos">+</i> positive ion</span>
-            <span><i className="dot neg">−</i> negative ion / electron</span>
-            {mode === "probe" && <span><i className="dot el">−</i> electron in metal lead</span>}
-          </div>
         </aside>
       </div>
     </div>
@@ -1316,8 +1332,17 @@ const css = `
 .fp-app .graph h3 { margin: 0 0 6px; font-size: 14px; }
 .fp-app .graph svg { width: 100%; max-width: 460px; display: block; }
 .fp-app .note { font-size: 13px; color: #334155; margin: 6px 0 0; }
-.fp-app .explain { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 18px;
-  font-size: 14.5px; line-height: 1.5; align-self: start; }
+.fp-app .right { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.fp-app .right .graph { margin-top: 0; }
+.fp-app .explain { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 18px 16px;
+  font-size: 14.5px; line-height: 1.5; }
+.fp-app .explain.min { padding-bottom: 12px; }
+.fp-app .explain-bar { display: flex; justify-content: space-between; align-items: center; margin: 0 -8px 6px 0;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; }
+.fp-app .min-btn { width: 30px; height: 26px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px;
+  font-size: 18px; line-height: 1; cursor: pointer; color: #334155; }
+.fp-app .min-btn:hover { background: #e2e8f0; }
+.fp-app .explain.min .key { margin-top: 2px; }
 .fp-app .explain h2 { font-size: 17px; margin: 0 0 8px; }
 .fp-app .explain h2 + ol, .fp-app .explain h2 + ul { margin-top: 0; }
 .fp-app .explain ol, .fp-app .explain ul { padding-left: 20px; }
