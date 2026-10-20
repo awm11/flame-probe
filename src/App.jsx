@@ -16,7 +16,7 @@ const TOP_PAD = 34;         // breathing room above the supply wires
 const HT = H + TOP_PAD;     // full canvas height
 const PX_PER_CM = 38;
 const PLATE_TOP = 60;
-const PLATE_BOTTOM = 330;
+const PLATE_BOTTOM = 357;   // plates 297 tall
 const PLATE_W = 16;
 const MAX_PD = 5000;
 
@@ -37,9 +37,9 @@ const LEAD_Y = 420;         // lead from probe to meter
 const VMX = 679;            // voltmeter centre x
 const RES_X0 = 552, RES_X1 = 596; // series resistor in the lead (clear of the probe's furthest-right position)
 const MX = VMX;             // electroscope sits in the same place as the voltmeter
-const ES_WIRE_X = MX + 49;  // lead runs up the right of the electroscope to its cap
+const ES_WIRE_X = MX - 52;  // lead runs straight up the left of the electroscope, then into its cap
 const VM_Y = 370;           // voltmeter centre y
-const TIP_MIN = 115, TIP_MAX = 300, TIP_DEFAULT = 186;
+const TIP_MIN = 115, TIP_MAX = 316, TIP_DEFAULT = 186;
 const ES_CAP = 292;         // electroscope cap height (case bottom at 396, clear of the lead)
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -173,7 +173,7 @@ function leadPath(objX, tipY, meter) {
   const pts = [[objX, tipY + 8]];
   for (let i = 0; i <= 20; i++) pts.push(bez(c, i / 20));
   return pts.concat(meter === "electroscope"
-    ? [[ES_WIRE_X, LEAD_Y], [ES_WIRE_X, ES_CAP + 4], [MX + 15, ES_CAP + 4]]
+    ? [[ES_WIRE_X, LEAD_Y], [ES_WIRE_X, ES_CAP + 4], [MX - 15, ES_CAP + 4]]
     : [[VMX - 20, LEAD_Y], [VMX - 20, VM_Y + 22]]);
 }
 
