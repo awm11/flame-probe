@@ -1366,7 +1366,7 @@ const css = `
 .fp-app .term.neg { right: 12px; background: #262626; }
 .fp-app .term.pos { right: 40px; background: #dc2626; }
 .fp-app canvas { display: block; background: #f8fafc; }
-.fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
+.fp-app canvas:focus, .fp-app canvas:focus-visible { outline: none; }
 
 .fp-app .move-row { display: flex; align-items: center; gap: 14px; margin-top: 6px; font-size: 13px; color: #475569; }
 .fp-app .move-row span { flex: 1; text-align: left; }
