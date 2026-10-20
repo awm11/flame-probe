@@ -27,8 +27,11 @@ const handleTop = (tipY) => tipY + 8 + ROD;
 const handleBot = (tipY) => tipY + 8 + ROD + HANDLE_H;
 const WIRE_LOW = 440;       // the slack lead never hangs below this
 const LEAD_Y = 420;         // lead from probe to meter
-const RES_X0 = 600, RES_X1 = 644; // series resistor in the lead
-const MX = 716;             // meter / electroscope centre x
+const MX = 716;             // electroscope centre x
+// voltmeter + series resistor, centred as a group in the space right of the + plate
+// (between the plate's outermost position, x = 556, and the edge, x = 760)
+const VMX = 679;            // voltmeter centre x
+const RES_X0 = VMX - 76, RES_X1 = VMX - 32; // series resistor in the lead
 const VM_Y = 370;           // voltmeter centre y
 const TIP_MIN = 115, TIP_MAX = 300, TIP_DEFAULT = 186;
 const ES_CAP = 236;         // electroscope cap height
@@ -164,8 +167,8 @@ function leadPath(objX, tipY, meter) {
   const pts = [[objX, tipY + 8]];
   for (let i = 0; i <= 20; i++) pts.push(bez(c, i / 20));
   return pts.concat(meter === "electroscope"
-    ? [[652, LEAD_Y], [652, ES_CAP + 4], [MX - 15, ES_CAP + 4]]
-    : [[MX - 20, LEAD_Y], [MX - 20, VM_Y + 22]]);
+    ? [[660, LEAD_Y], [660, ES_CAP + 4], [MX - 15, ES_CAP + 4]]
+    : [[VMX - 20, LEAD_Y], [VMX - 20, VM_Y + 22]]);
 }
 
 /* leaf angle (radians) of the electroscope for a given potential */
@@ -545,13 +548,13 @@ export default function App() {
           ctx.strokeStyle = "#475569";
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(MX + 20, VM_Y + 22);
-          ctx.lineTo(MX + 20, LEAD_Y + 2);
+          ctx.moveTo(VMX + 20, VM_Y + 22);
+          ctx.lineTo(VMX + 20, LEAD_Y + 2);
           ctx.stroke();
-          drawEarth(ctx, MX + 20, LEAD_Y + 2);
+          drawEarth(ctx, VMX + 20, LEAD_Y + 2);
           // dial
           ctx.beginPath();
-          ctx.arc(MX, VM_Y, 30, 0, Math.PI * 2);
+          ctx.arc(VMX, VM_Y, 30, 0, Math.PI * 2);
           ctx.fillStyle = "#fff";
           ctx.fill();
           ctx.strokeStyle = "#1e293b";
@@ -559,7 +562,7 @@ export default function App() {
           ctx.stroke();
           const a0 = Math.PI * 1.2, a1 = Math.PI * 1.8;
           ctx.beginPath();
-          ctx.arc(MX, VM_Y, 23, a0, a1);
+          ctx.arc(VMX, VM_Y, 23, a0, a1);
           ctx.strokeStyle = "#cbd5e1";
           ctx.lineWidth = 3;
           ctx.stroke();
@@ -567,16 +570,16 @@ export default function App() {
           ctx.strokeStyle = "#dc2626";
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(MX, VM_Y);
-          ctx.lineTo(MX + 23 * Math.cos(ang), VM_Y + 23 * Math.sin(ang));
+          ctx.moveTo(VMX, VM_Y);
+          ctx.lineTo(VMX + 23 * Math.cos(ang), VM_Y + 23 * Math.sin(ang));
           ctx.stroke();
           ctx.fillStyle = "#0f172a";
           ctx.font = "bold 12px system-ui, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText(`${Math.round(s.probeV)} V`, MX, VM_Y + 13);
+          ctx.fillText(`${Math.round(s.probeV)} V`, VMX, VM_Y + 13);
           ctx.font = "10.5px system-ui, sans-serif";
           ctx.fillStyle = "#475569";
-          ctx.fillText("high-R voltmeter", MX, VM_Y - 42);
+          ctx.fillText("high-R voltmeter", VMX, VM_Y - 42);
         } else {
           /* ---- gold-leaf electroscope ---- */
           const caseT = ES_CAP + 24, caseB = ES_CAP + 104;
