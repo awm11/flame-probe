@@ -1504,11 +1504,11 @@ const css = `
 .fp-app .disturb-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fp-app .disturb-btns button { display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
   border-radius: 8px; padding: 7px 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff;
-  border: 1px solid transparent; box-shadow: 0 1px 0 rgba(15,23,42,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+  border: 1px solid transparent;
   transition: filter 0.12s, transform 0.06s; }
 .fp-app .disturb-btns button b { font-size: 14px; line-height: 1; }
-.fp-app .disturb-btns .dis { background: linear-gradient(#3b82f6, #1d4ed8); border-color: #1e40af; }
-.fp-app .disturb-btns .over { background: linear-gradient(#ef4444, #b91c1c); border-color: #991b1b; }
+.fp-app .disturb-btns .dis { background: #1d4ed8; border-color: #1d4ed8; }
+.fp-app .disturb-btns .over { background: #b91c1c; border-color: #b91c1c; }
 .fp-app .disturb-btns button:hover { filter: brightness(1.08); }
 .fp-app .disturb-btns button:active { transform: translateY(1px); filter: brightness(0.95); }
 `;
