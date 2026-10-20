@@ -18,8 +18,6 @@ const PLATE_W = 16;
 const MAX_PD = 5000;
 
 const WIRE_Y = 22;          // supply wires run along here
-const TERM_L = W * 0.32;    // EHT terminals (match the HTML panel above the canvas)
-const TERM_R = W * 0.68;
 const HANDLE_TOP = 384;     // insulating handle of the probe
 const HANDLE_BOT = 420;
 const LEAD_Y = 448;         // lead from probe to meter
@@ -164,6 +162,10 @@ export default function App() {
 
   const canvasRef = useRef(null);
   const drag = useRef(null); // active drag gesture (see pointer handlers)
+  // x of the EHT terminals in canvas units, measured from the HTML panel
+  const terms = useRef({ l: W * 0.42, r: W * 0.58 });
+  const termL = useRef(null);
+  const termR = useRef(null);
   const sim = useRef({
     ions: [], probeV: 0, t: 0, spawnAcc: 0, lastUi: 0,
     capture: [], wireE: [], flashes: [], capAcc: 0, eAcc: 0, flux: 0, dV: 0,
@@ -178,6 +180,21 @@ export default function App() {
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // keep the supply wires lined up with the panel's terminals at any width
+    const measure = () => {
+      const cr = canvas.getBoundingClientRect();
+      if (!cr.width || !termL.current || !termR.current) return;
+      const mid = (el) => {
+        const r = el.getBoundingClientRect();
+        return ((r.left + r.width / 2 - cr.left) / cr.width) * W;
+      };
+      terms.current = { l: mid(termL.current), r: mid(termR.current) };
+    };
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro) { ro.observe(canvas); ro.observe(termL.current.parentElement); }
+    window.addEventListener("resize", measure);
 
     let raf;
     let last = performance.now();
@@ -303,6 +320,7 @@ export default function App() {
       ctx.strokeStyle = "#475569";
       ctx.lineWidth = 2;
       ctx.beginPath();
+      const { l: TERM_L, r: TERM_R } = terms.current;
       ctx.moveTo(TERM_L, 0); ctx.lineTo(TERM_L, WIRE_Y);
       ctx.lineTo(leftX - PLATE_W / 2, WIRE_Y); ctx.lineTo(leftX - PLATE_W / 2, PLATE_TOP);
       ctx.moveTo(TERM_R, 0); ctx.lineTo(TERM_R, WIRE_Y);
@@ -756,7 +774,11 @@ export default function App() {
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   /* ---------- dragging the probe / candle ----------
@@ -880,14 +902,14 @@ export default function App() {
                 <b>EHT supply</b>
                 <span>0–5 kV d.c.</span>
               </div>
-              <div className="eht-meta">50 MΩ safety resistor built in · max 0.1 mA</div>
+              <div className="eht-meta">50 MΩ safety resistor · max 0.1 mA</div>
               <label className="eht-slider">
                 <span>Output p.d. <b>{pd} V</b></span>
                 <input type="range" min="0" max={MAX_PD} step="100" value={pd}
                   onChange={(e) => setPd(+e.target.value)} aria-label="EHT output p.d." />
               </label>
-              <span className="term neg" title="negative terminal (earthed)">−</span>
-              <span className="term pos" title="positive terminal">+</span>
+              <span ref={termL} className="term neg" title="negative terminal (earthed)">−</span>
+              <span ref={termR} className="term pos" title="positive terminal">+</span>
             </div>
             <canvas
               ref={canvasRef}
@@ -1198,8 +1220,8 @@ const css = `
 @media (max-width: 900px) { .fp-app .layout { grid-template-columns: 1fr; } }
 
 .fp-app .rig { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding-top: 10px; overflow: hidden; }
-.fp-app .eht { position: relative; width: 50%; margin: 0 auto; background: #fb923c; border: 2px solid #c2410c;
-  border-radius: 8px; padding: 6px 10px 12px; color: #1c1917; box-shadow: 0 2px 0 #c2410c; }
+.fp-app .eht { position: relative; width: 30%; min-width: 196px; max-width: 250px; margin: 0 auto; background: #fb923c; border: 2px solid #c2410c;
+  border-radius: 8px; padding: 5px 9px 11px; color: #1c1917; box-shadow: 0 2px 0 #c2410c; }
 .fp-app .eht-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .fp-app .eht-head b { font-size: 14px; letter-spacing: 0.02em; }
 .fp-app .eht-head span { font-size: 12px; font-weight: 600; }
@@ -1210,8 +1232,8 @@ const css = `
 .fp-app .term { position: absolute; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;
   color: #fff; border: 2px solid #1c1917; line-height: 1; }
-.fp-app .term.neg { left: 14%; transform: translateX(-50%); background: #1e293b; }
-.fp-app .term.pos { right: 14%; transform: translateX(50%); background: #b91c1c; }
+.fp-app .term.neg { left: 16%; transform: translateX(-50%); background: #1e293b; }
+.fp-app .term.pos { right: 16%; transform: translateX(50%); background: #b91c1c; }
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
 
