@@ -180,6 +180,7 @@ export default function App() {
   const [showField, setShowField] = useState(false);
   const [flameOn, setFlameOn] = useState(true);
   const [showTransfer, setShowTransfer] = useState(true);
+  const [showIons, setShowIons] = useState(true);
   const [reading, setReading] = useState(0);
   const [settling, setSettling] = useState(false);
   const [hover, setHover] = useState(false);
@@ -197,7 +198,7 @@ export default function App() {
     capture: [], wireE: [], flashes: [], capAcc: 0, eAcc: 0, flux: 0, dV: 0,
   });
   const params = useRef({});
-  params.current = { mode, meter, pd, sep, pos, tipY, showEq, showField, flameOn, showTransfer };
+  params.current = { mode, meter, pd, sep, pos, tipY, showEq, showField, flameOn, showTransfer, showIons };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -687,7 +688,7 @@ export default function App() {
       }
 
       // ions on top
-      s.ions.forEach((ion) => drawIon(ctx, ion));
+      if (p.showIons) s.ions.forEach((ion) => drawIon(ctx, ion));
 
       // labels for the split candle flame (drawn above the ions)
       if (splitLabels) {
@@ -1052,6 +1053,10 @@ export default function App() {
               <label className="chk">
                 <input type="checkbox" checked={showField} onChange={(e) => setShowField(e.target.checked)} />
                 Field lines (E points from + to −)
+              </label>
+              <label className="chk">
+                <input type="checkbox" checked={showIons} onChange={(e) => setShowIons(e.target.checked)} />
+                Show ions
               </label>
               {mode === "probe" && (
                 <label className="chk">
