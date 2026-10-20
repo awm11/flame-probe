@@ -29,7 +29,7 @@ const WIRE_LOW = 440;       // the slack lead never hangs below this
 const LEAD_Y = 420;         // lead from probe to meter
 const RES_X0 = 600, RES_X1 = 644; // series resistor in the lead
 const MX = 716;             // meter / electroscope centre x
-const VM_Y = 216;           // voltmeter centre y
+const VM_Y = 370;           // voltmeter centre y
 const TIP_MIN = 115, TIP_MAX = 300, TIP_DEFAULT = 186;
 const ES_CAP = 236;         // electroscope cap height
 
@@ -354,9 +354,9 @@ export default function App() {
       // earth on the 0 V plate
       ctx.beginPath();
       ctx.moveTo(leftX - PLATE_W / 2, PLATE_BOTTOM);
-      ctx.lineTo(leftX - PLATE_W / 2, 404);
+      ctx.lineTo(leftX - PLATE_W / 2, PLATE_BOTTOM + 16);
       ctx.stroke();
-      drawEarth(ctx, leftX - PLATE_W / 2, 404);
+      drawEarth(ctx, leftX - PLATE_W / 2, PLATE_BOTTOM + 16);
 
       // field lines: uniform in the middle, bulging outward at the edges
       if (p.showField && p.pd > 0) {
@@ -501,12 +501,15 @@ export default function App() {
         ctx.fillText("high R", (RES_X0 + RES_X1) / 2, LEAD_Y - 15);
 
         // metal rod + insulating handle: one rigid piece that moves together
-        ctx.strokeStyle = "#94a3b8";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(objX, tipY + 8);
-        ctx.lineTo(objX, hT);
-        ctx.stroke();
+        // rod shaded across its width so it reads as a metal cylinder
+        const rodG = ctx.createLinearGradient(objX - 3, 0, objX + 3, 0);
+        rodG.addColorStop(0, "#475569");
+        rodG.addColorStop(0.3, "#cbd5e1");
+        rodG.addColorStop(0.45, "#f8fafc");
+        rodG.addColorStop(0.75, "#94a3b8");
+        rodG.addColorStop(1, "#334155");
+        ctx.fillStyle = rodG;
+        ctx.fillRect(objX - 3, tipY + 8, 6, hT - tipY - 8);
         ctx.fillStyle = "#334155";
         ctx.beginPath();
         ctx.roundRect(objX - 6, hT, 12, hB - hT, 3);
@@ -1011,19 +1014,19 @@ export default function App() {
                 touchAction: "none",
               }}
             />
-          </div>
-          <div className="move-row">
             <div className="pad" role="group" aria-label="Move the probe">
               {padBtn("up", "Move up", "▲", mode !== "probe")}
               {padBtn("left", "Move left", "◀", false)}
               {padBtn("right", "Move right", "▶", false)}
               {padBtn("down", "Move down", "▼", mode !== "probe")}
             </div>
+          </div>
+          <div className="move-row">
             <span>
               {mode === "probe"
                 ? "Drag the probe anywhere between the plates. A mainly sideways or up-down drag stays on that line; drag diagonally to move freely."
                 : "Drag the candle left or right."}{" "}
-              Or hold a button on the pad, or click the diagram and use the arrow keys.
+              Or hold an arrow in the corner of the diagram, or click the diagram and use the arrow keys.
             </span>
           </div>
 
@@ -1362,10 +1365,13 @@ const css = `
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
 
-.fp-app .move-row { display: flex; align-items: center; gap: 14px; margin-top: 8px; font-size: 13px; color: #475569; }
+.fp-app .move-row { display: flex; align-items: center; gap: 14px; margin-top: 6px; font-size: 13px; color: #475569; }
 .fp-app .move-row span { flex: 1; text-align: left; }
-.fp-app .pad { flex: none; display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 30px);
+.fp-app .pad { position: absolute; left: 6px; bottom: 6px; z-index: 2; display: grid;
+  grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 24px);
   gap: 2px; grid-template-areas: ". up ." "left . right" ". down ."; }
+.fp-app .pad button { opacity: 0.85; box-shadow: 0 1px 2px rgba(15,23,42,0.12); padding: 0; font-size: 11px !important; }
+@media (max-width: 600px) { .fp-app .pad { position: static; margin: 6px; } }
 .fp-app .pad button { border: 1px solid #cbd5e1; background: #fff; border-radius: 7px; font-size: 13px;
   cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; color: #334155; }
 .fp-app .pad button:hover:not(:disabled) { background: #e2e8f0; }
