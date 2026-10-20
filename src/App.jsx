@@ -1026,6 +1026,7 @@ export default function App() {
             </span>
           </div>
 
+          <div className="panel-row">
           <div className="controls">
             <label>
               <span>Plate separation d: <b>{sep} cm</b></span>
@@ -1036,10 +1037,10 @@ export default function App() {
               <div className="seg" role="group" aria-label="Measuring instrument">
                 <span>Measure with:</span>
                 <button className={meter === "voltmeter" ? "on" : ""} onClick={() => setMeter("voltmeter")}>
-                  High-R voltmeter
+                  Voltmeter
                 </button>
                 <button className={meter === "electroscope" ? "on" : ""} onClick={() => setMeter("electroscope")}>
-                  Gold-leaf electroscope
+                  Electroscope
                 </button>
               </div>
             )}
@@ -1097,6 +1098,7 @@ export default function App() {
             ) : (
               <div><small>Force on an ion</small><b>F = qE</b></div>
             )}
+          </div>
           </div>
 
         </div>
@@ -1354,11 +1356,14 @@ const css = `
 .fp-app .pad button:disabled { opacity: 0.35; cursor: default; }
 .fp-app .pad-up { grid-area: up; } .fp-app .pad-down { grid-area: down; }
 .fp-app .pad-left { grid-area: left; } .fp-app .pad-right { grid-area: right; }
-.fp-app .controls { background: #fff; border-radius: 12px; padding: 12px 16px; margin-top: 12px;
-  border: 1px solid #e2e8f0; display: grid; gap: 10px; }
+.fp-app .panel-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px;
+  margin-top: 12px; align-items: start; }
+@media (max-width: 640px) { .fp-app .panel-row { grid-template-columns: 1fr; } }
+.fp-app .controls { background: #fff; border-radius: 12px; padding: 12px 14px;
+  border: 1px solid #e2e8f0; display: grid; gap: 10px; align-content: start; }
 .fp-app .controls label { display: grid; gap: 4px; font-size: 14px; }
 .fp-app .controls input[type=range] { width: 100%; }
-.fp-app .controls input.sep-slider { width: 40%; min-width: 140px; }
+.fp-app .controls input.sep-slider { width: 80%; min-width: 140px; }
 .fp-app .seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
 .fp-app .seg span { margin-right: 4px; }
 .fp-app .seg button { border: 1px solid #cbd5e1; background: #fff; padding: 6px 12px; border-radius: 999px;
@@ -1366,8 +1371,7 @@ const css = `
 .fp-app .seg button.on { background: #a16207; border-color: #a16207; color: #fff; }
 .fp-app .toggles { display: flex; gap: 18px; flex-wrap: wrap; }
 .fp-app .chk { display: flex !important; align-items: center; gap: 6px; grid-template-columns: none; }
-.fp-app .readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px; margin-top: 12px; }
+.fp-app .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .fp-app .readouts > div { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
   padding: 10px 12px; display: grid; gap: 2px; }
 .fp-app .readouts small { color: #64748b; font-size: 12px; }
