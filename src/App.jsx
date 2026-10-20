@@ -1033,8 +1033,16 @@ export default function App() {
                 <input type="range" min="0" max={MAX_PD} step="100" value={pd}
                   onChange={(e) => setPd(+e.target.value)} aria-label={`EHT output p.d., ${pd} volts`} />
               </label>
-              <span className="term pos" title="positive terminal">+</span>
-              <span className="term neg" title="negative terminal (earthed)">−</span>
+              <span className="term pos" title="positive terminal" aria-label="positive terminal">
+                <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true">
+                  <path d="M5 1v8M1 5h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </span>
+              <span className="term neg" title="negative terminal (earthed)" aria-label="negative terminal">
+                <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true">
+                  <path d="M1 5h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </span>
             </div>
             {/* the leads drawn over the panel's top edge, down into the sockets */}
             <svg className="leads" width={W} height={HT} aria-hidden="true">
@@ -1415,7 +1423,7 @@ const css = `
 .fp-app .eht-slider { display: flex !important; align-items: center; gap: 6px; margin-top: 5px; font-size: 9.5px;
   font-weight: 700; letter-spacing: 0.08em; }
 .fp-app .eht-slider input { flex: 1; min-width: 0; accent-color: #292524; }
-.fp-app .term { position: absolute; top: 5px; z-index: 1; width: 18px; height: 18px; border-radius: 50%;
+.fp-app .term { position: absolute; top: 5px; z-index: 1; padding: 0; width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;
   color: #fff; line-height: 1; box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4); }
 .fp-app .term.neg { right: 26px; background: #262626; }
