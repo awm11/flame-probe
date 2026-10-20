@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 const W = 760;
 const H = 470;
-const TOP_PAD = 18;         // breathing room above the supply wires
+const TOP_PAD = 34;         // breathing room above the supply wires
 const HT = H + TOP_PAD;     // full canvas height
 const PX_PER_CM = 38;
 const PLATE_TOP = 60;
