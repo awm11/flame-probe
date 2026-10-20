@@ -241,7 +241,8 @@ export default function App() {
   const drag = useRef(null); // active drag gesture (see pointer handlers)
   const sim = useRef({
     ions: [], probeV: 0, t: 0, spawnAcc: 0, lastUi: 0,
-    capture: [], wireE: [], flashes: [], capAcc: 0, eAcc: 0, flux: 0, dV: 0,
+    capture: [], flashes: [], capAcc: 0, flux: 0, dV: 0,
+    ePhase: 0, eAlpha: 0, eDir: 1, // evenly spaced row of drifting electrons in the lead
   });
   const params = useRef({});
   params.current = { mode, meter, pd, sep, pos, tipY, showEq, showField, flameOn, showTransfer, showIons };
@@ -342,14 +343,6 @@ export default function App() {
             life: 1,
           });
         }
-        // the lead is full of free electrons: when charge flows they ALL start to
-        // drift at once, so show them appearing (fading in) all along the lead
-        s.eAcc += flux * 22 * dt;
-        while (s.eAcc >= 1) {
-          s.eAcc -= 1;
-          // u = 0 at probe tip, 1 at instrument
-          s.wireE.push({ u: Math.random(), fade: 0 });
-        }
       }
       s.capture.forEach((c) => {
         const dx = tipX - c.x, dy = tipCY - c.y;
@@ -369,15 +362,14 @@ export default function App() {
       });
       s.capture = s.capture.filter((c) => c.life > 0 && probe);
 
-      // every electron in the lead drifts the SAME way: set by the current sign
-      // now, so electrons already en route reverse if the flow reverses.
-      const drift = (sign > 0 ? -1 : 1) * (0.2 + 0.5 * flux);
-      s.wireE.forEach((el) => {
-        el.u += drift * dt;
-        // fade in while flowing; fade out when the flow stops
-        el.fade = flowing ? Math.min(1, el.fade + dt * 2.5) : el.fade - dt * 1.5;
-      });
-      s.wireE = s.wireE.filter((el) => el.u >= 0 && el.u <= 1 && (el.fade > 0 || flowing) && probe);
+      // The lead is full of free electrons. When charge flows they ALL drift at
+      // once, the same way, so draw them as one evenly spaced row that fades in
+      // along the whole lead, slides together (reversing together), and fades
+      // out when the flow stops.
+      if (flowing) s.eDir = sign > 0 ? -1 : 1; // −1: towards the tip, +1: towards the meter
+      s.eAlpha = flowing ? Math.min(1, s.eAlpha + dt * 2.5) : Math.max(0, s.eAlpha - dt * 1.5);
+      if (!probe) s.eAlpha = 0;
+      s.ePhase += s.eDir * (30 + 90 * flux) * dt; // drift speed, px per second
       s.flashes.forEach((f) => { f.t -= dt; });
       s.flashes = s.flashes.filter((f) => f.t > 0);
 
@@ -848,19 +840,24 @@ export default function App() {
           }
           return path[0];
         };
-        s.wireE.forEach((el) => {
-          const [ex, ey] = at(el.u);
-          ctx.save();
-          // also fade out as they approach either end of the lead
-          const edge = clamp(Math.min(el.u, 1 - el.u) / 0.04, 0, 1);
-          ctx.globalAlpha = clamp(el.fade, 0, 1) * edge;
-          ctx.beginPath();
-          ctx.arc(ex, ey, 5, 0, Math.PI * 2);
-          ctx.fillStyle = "#f59e0b";
-          ctx.fill();
-          drawSign(ctx, ex, ey, -1, 2.5, 1.5, "#1f2937");
-          ctx.restore();
-        });
+        if (s.eAlpha > 0.01) {
+          const SPACING = 26; // px between neighbouring electrons, measured along the lead
+          const off = ((s.ePhase % SPACING) + SPACING) % SPACING;
+          for (let d = off; d < total; d += SPACING) {
+            const u = d / total;
+            const [ex, ey] = at(u);
+            ctx.save();
+            // fade out near either end of the lead
+            const edge = clamp(Math.min(d, total - d) / 20, 0, 1);
+            ctx.globalAlpha = s.eAlpha * edge;
+            ctx.beginPath();
+            ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#f59e0b";
+            ctx.fill();
+            drawSign(ctx, ex, ey, -1, 2.5, 1.5, "#1f2937");
+            ctx.restore();
+          }
+        }
 
         if (flowing) {
           const lx = clamp(objX, leftX + 95, rightX - 95);
