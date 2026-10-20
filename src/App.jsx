@@ -32,7 +32,7 @@ const LEAD_Y = 420;         // lead from probe to meter
 // voltmeter + series resistor, centred as a group in the space right of the + plate
 // (between the plate's outermost position, x = 556, and the edge, x = 760)
 const VMX = 679;            // voltmeter centre x
-const RES_X0 = VMX - 76, RES_X1 = VMX - 32; // series resistor in the lead
+const RES_X0 = 552, RES_X1 = 596; // series resistor in the lead (clear of the probe's furthest-right position)
 const MX = VMX;             // electroscope sits in the same place as the voltmeter
 const ES_WIRE_X = MX + 49;  // lead runs up the right of the electroscope to its cap
 const VM_Y = 370;           // voltmeter centre y
