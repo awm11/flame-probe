@@ -907,6 +907,44 @@ export default function App() {
   const nudgeX = (d) => setPos((p) => Math.round(clamp(p + d, 0.05, 0.95) * 1000) / 1000);
   const nudgeY = (d) => setTipY((y) => clamp(y + d, TIP_MIN, TIP_MAX));
 
+  /* direction pad: one step on press; hold to move continuously after a short pause */
+  const hold = useRef(null);
+  const step = (dir, fine) => {
+    const k = fine ? 0.3 : 1; // continuous movement uses smaller, frequent steps
+    if (dir === "left") nudgeX(-0.02 * k);
+    if (dir === "right") nudgeX(0.02 * k);
+    if (dir === "up") nudgeY(-8 * k);
+    if (dir === "down") nudgeY(8 * k);
+  };
+  const stopHold = () => {
+    if (hold.current) { clearTimeout(hold.current.t); clearInterval(hold.current.i); hold.current = null; }
+  };
+  const startHold = (dir) => (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    stopHold();
+    step(dir, false);
+    const h = { i: null };
+    h.t = setTimeout(() => { h.i = setInterval(() => step(dir, true), 30); }, 400);
+    hold.current = h;
+  };
+  useEffect(() => stopHold, []);
+  const padBtn = (dir, label, glyph, disabled) => (
+    <button
+      className={`pad-${dir}`}
+      aria-label={label}
+      disabled={disabled}
+      onPointerDown={startHold(dir)}
+      onPointerUp={stopHold}
+      onPointerLeave={stopHold}
+      onPointerCancel={stopHold}
+      onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); step(dir, e.repeat); } }}
+    >
+      {glyph}
+    </button>
+  );
+
   /* ---------- derived values ---------- */
   const E = pd / (sep / 100); // V/m
   const x = pos * sep;        // cm from earthed plate
@@ -974,16 +1012,18 @@ export default function App() {
             />
           </div>
           <div className="move-row">
-            <button onClick={() => nudgeX(-0.05)} aria-label="Move left">◀</button>
-            {mode === "probe" && <button onClick={() => nudgeY(-20)} aria-label="Move up">▲</button>}
+            <div className="pad" role="group" aria-label="Move the probe">
+              {padBtn("up", "Move up", "▲", mode !== "probe")}
+              {padBtn("left", "Move left", "◀", false)}
+              {padBtn("right", "Move right", "▶", false)}
+              {padBtn("down", "Move down", "▼", mode !== "probe")}
+            </div>
             <span>
               {mode === "probe"
                 ? "Drag the probe anywhere between the plates. A mainly sideways or up-down drag stays on that line; drag diagonally to move freely."
                 : "Drag the candle left or right."}{" "}
-              Arrow keys also work after clicking the diagram.
+              Or hold a button on the pad, or click the diagram and use the arrow keys.
             </span>
-            {mode === "probe" && <button onClick={() => nudgeY(20)} aria-label="Move down">▼</button>}
-            <button onClick={() => nudgeX(0.05)} aria-label="Move right">▶</button>
           </div>
 
           <div className="controls">
@@ -1303,11 +1343,17 @@ const css = `
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
 
-.fp-app .move-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: #475569; }
-.fp-app .move-row span { flex: 1; text-align: center; }
-.fp-app .move-row button { border: 1px solid #cbd5e1; background: #fff; border-radius: 8px; width: 40px; height: 36px;
-  font-size: 15px; cursor: pointer; flex: none; }
-.fp-app .move-row button:hover { background: #e2e8f0; }
+.fp-app .move-row { display: flex; align-items: center; gap: 14px; margin-top: 8px; font-size: 13px; color: #475569; }
+.fp-app .move-row span { flex: 1; text-align: left; }
+.fp-app .pad { flex: none; display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 30px);
+  gap: 2px; grid-template-areas: ". up ." "left . right" ". down ."; }
+.fp-app .pad button { border: 1px solid #cbd5e1; background: #fff; border-radius: 7px; font-size: 13px;
+  cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; color: #334155; }
+.fp-app .pad button:hover:not(:disabled) { background: #e2e8f0; }
+.fp-app .pad button:active:not(:disabled) { background: #cbd5e1; }
+.fp-app .pad button:disabled { opacity: 0.35; cursor: default; }
+.fp-app .pad-up { grid-area: up; } .fp-app .pad-down { grid-area: down; }
+.fp-app .pad-left { grid-area: left; } .fp-app .pad-right { grid-area: right; }
 .fp-app .controls { background: #fff; border-radius: 12px; padding: 12px 16px; margin-top: 12px;
   border: 1px solid #e2e8f0; display: grid; gap: 10px; }
 .fp-app .controls label { display: grid; gap: 4px; font-size: 14px; }
