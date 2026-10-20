@@ -367,7 +367,8 @@ export default function App() {
       // along the whole lead, slides together (reversing together), and fades
       // out when the flow stops.
       if (flowing) s.eDir = sign > 0 ? -1 : 1; // −1: towards the tip, +1: towards the meter
-      s.eAlpha = flowing ? Math.min(1, s.eAlpha + dt * 2.5) : Math.max(0, s.eAlpha - dt * 1.5);
+      const eShow = flux > 0.05; // electrons start fading a touch before the flow fully stops
+      s.eAlpha = eShow ? Math.min(1, s.eAlpha + dt * 2.5) : Math.max(0, s.eAlpha - dt * 2.2);
       if (!probe) s.eAlpha = 0;
       // I = nAvq: n (electron density) is fixed, so the drift speed v tracks the
       // current — fast just after a disturbance, slowing to a stop at equilibrium
