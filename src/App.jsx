@@ -1123,8 +1123,14 @@ export default function App() {
             {mode === "probe" && (
               <div className="disturb">
                 <span>Disturb the probe and watch it recover:</span>
-                <button onClick={() => { sim.current.probeV = 0; }}>Discharge probe to 0 V</button>
-                <button onClick={() => { sim.current.probeV = MAX_PD; }}>Overcharge probe to +{MAX_PD} V</button>
+                <div className="disturb-btns">
+                  <button className="dis" onClick={() => { sim.current.probeV = 0; }}>
+                    <b>↓</b> Discharge to 0 V
+                  </button>
+                  <button className="over" onClick={() => { sim.current.probeV = MAX_PD; }}>
+                    <b>↑</b> Overcharge to +{MAX_PD} V
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1473,8 +1479,15 @@ const css = `
 .fp-app .dot.pos { background: #dc2626; } .fp-app .dot.neg { background: #2563eb; }
 .fp-app .e-t { color: #b45309; font-weight: 600; }
 .fp-app .pos-t { color: #b91c1c; font-weight: 600; } .fp-app .neg-t { color: #1d4ed8; font-weight: 600; }
-.fp-app .disturb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: #475569; }
-.fp-app .disturb button { border: 1px solid #cbd5e1; background: #fff; border-radius: 8px; padding: 6px 10px;
-  font-size: 13px; cursor: pointer; }
-.fp-app .disturb button:hover { background: #e2e8f0; }
+.fp-app .disturb { display: grid; gap: 6px; font-size: 13px; color: #475569; }
+.fp-app .disturb-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fp-app .disturb-btns button { display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  border-radius: 8px; padding: 7px 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff;
+  border: 1px solid transparent; box-shadow: 0 1px 0 rgba(15,23,42,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: filter 0.12s, transform 0.06s; }
+.fp-app .disturb-btns button b { font-size: 14px; line-height: 1; }
+.fp-app .disturb-btns .dis { background: linear-gradient(#3b82f6, #1d4ed8); border-color: #1e40af; }
+.fp-app .disturb-btns .over { background: linear-gradient(#ef4444, #b91c1c); border-color: #991b1b; }
+.fp-app .disturb-btns button:hover { filter: brightness(1.08); }
+.fp-app .disturb-btns button:active { transform: translateY(1px); filter: brightness(0.95); }
 `;
