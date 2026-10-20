@@ -369,7 +369,9 @@ export default function App() {
       if (flowing) s.eDir = sign > 0 ? -1 : 1; // −1: towards the tip, +1: towards the meter
       s.eAlpha = flowing ? Math.min(1, s.eAlpha + dt * 2.5) : Math.max(0, s.eAlpha - dt * 1.5);
       if (!probe) s.eAlpha = 0;
-      s.ePhase += s.eDir * (30 + 90 * flux) * dt; // drift speed, px per second
+      // I = nAvq: n (electron density) is fixed, so the drift speed v tracks the
+      // current — fast just after a disturbance, slowing to a stop at equilibrium
+      s.ePhase += s.eDir * 450 * flux * dt; // px per second
       s.flashes.forEach((f) => { f.t -= dt; });
       s.flashes = s.flashes.filter((f) => f.t > 0);
 
@@ -1333,7 +1335,9 @@ function ProbeText({ meter }) {
           Move the probe back and forth and watch the electrons in the lead. The metal is already
           full of free electrons, so when charge flows they <em>all</em> start drifting at once,
           along the whole lead, not just from one end. They all drift the same way at any instant,
-          and reverse together when the flow reverses.
+          and reverse together when the flow reverses. Their spacing never changes; only their
+          speed does, because I = nAvq and the number of free electrons n is fixed. Watch them
+          race just after you disturb the probe, then slow to a stop as it reaches equilibrium.
         </li>
         <li>
           Only a tiny charge is needed (picocoulombs), because the probe has a small capacitance:
