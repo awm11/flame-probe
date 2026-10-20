@@ -1027,6 +1027,10 @@ export default function App() {
             </span>
           </div>
 
+
+        </div>
+
+        <aside className="right">
           <div className="panel-row">
           <div className="controls">
             <label>
@@ -1106,35 +1110,37 @@ export default function App() {
           </div>
           </div>
 
-        </div>
-
-        <aside className="right">
-          <section className={explainOpen ? "explain" : "explain min"}>
-            <div className="explain-bar">
-              <span>Explanation</span>
-              <button
-                className="min-btn"
-                onClick={() => setExplainOpen((o) => !o)}
-                aria-expanded={explainOpen}
-                aria-label={explainOpen ? "Minimise explanation" : "Expand explanation"}
-                title={explainOpen ? "Minimise" : "Expand"}
-              >
-                {explainOpen ? "−" : "+"}
-              </button>
-            </div>
-            {explainOpen && (mode === "probe" ? <ProbeText meter={meter} /> : <CandleText />)}
-            <div className="key">
-            <span><i className="dot pos">+</i> positive ion</span>
-            <span><i className="dot neg">−</i> negative ion / electron</span>
-              {mode === "probe" && <span><i className="dot el">−</i> electron in metal lead</span>}
-            </div>
-          </section>
 
           {mode === "probe" && (
             <Graph pd={pd} sep={sep} x={x} reading={reading} meter={meter} />
           )}
         </aside>
       </div>
+
+      <section className={explainOpen ? "explain" : "explain min"}>
+        <div className="explain-bar">
+          <span>Explanation</span>
+          <button
+            className="min-btn"
+            onClick={() => setExplainOpen((o) => !o)}
+            aria-expanded={explainOpen}
+            aria-label={explainOpen ? "Minimise explanation" : "Expand explanation"}
+            title={explainOpen ? "Minimise" : "Expand"}
+          >
+            {explainOpen ? "−" : "+"}
+          </button>
+        </div>
+        {explainOpen && (
+        <div className="explain-body">
+          {mode === "probe" ? <ProbeText meter={meter} /> : <CandleText />}
+        </div>
+      )}
+        <div className="key">
+        <span><i className="dot pos">+</i> positive ion</span>
+        <span><i className="dot neg">−</i> negative ion / electron</span>
+          {mode === "probe" && <span><i className="dot el">−</i> electron in metal lead</span>}
+        </div>
+      </section>
     </div>
   );
 }
@@ -1361,9 +1367,7 @@ const css = `
 .fp-app .pad button:disabled { opacity: 0.35; cursor: default; }
 .fp-app .pad-up { grid-area: up; } .fp-app .pad-down { grid-area: down; }
 .fp-app .pad-left { grid-area: left; } .fp-app .pad-right { grid-area: right; }
-.fp-app .panel-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px;
-  margin-top: 12px; align-items: start; }
-@media (max-width: 640px) { .fp-app .panel-row { grid-template-columns: 1fr; } }
+.fp-app .panel-row { display: grid; gap: 12px; align-items: start; }
 .fp-app .controls { background: #fff; border-radius: 12px; padding: 12px 14px;
   border: 1px solid #e2e8f0; display: grid; gap: 10px; align-content: start; }
 .fp-app .controls label { display: grid; gap: 4px; font-size: 14px; }
@@ -1389,6 +1393,10 @@ const css = `
 .fp-app .note { font-size: 13px; color: #334155; margin: 6px 0 0; }
 .fp-app .right { display: grid; gap: 12px; align-content: start; min-width: 0; }
 .fp-app .right .graph { margin-top: 0; }
+.fp-app .explain { margin-top: 16px; }
+.fp-app .explain-body { column-width: 380px; column-gap: 32px; column-rule: 1px solid #e2e8f0; }
+.fp-app .explain-body h2 { break-after: avoid; }
+.fp-app .explain-body li, .fp-app .explain-body p { break-inside: avoid; }
 .fp-app .explain { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 18px 16px;
   font-size: 14.5px; line-height: 1.5; }
 .fp-app .explain.min { padding-bottom: 12px; }
