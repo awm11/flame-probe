@@ -988,7 +988,7 @@ export default function App() {
           <div className="controls">
             <label>
               <span>Plate separation d: <b>{sep} cm</b></span>
-              <input type="range" min="5" max="12" step="1" value={sep}
+              <input className="sep-slider" type="range" min="5" max="12" step="1" value={sep}
                 onChange={(e) => setSep(+e.target.value)} />
             </label>
             {mode === "probe" && (
@@ -1296,6 +1296,7 @@ const css = `
   border: 1px solid #e2e8f0; display: grid; gap: 10px; }
 .fp-app .controls label { display: grid; gap: 4px; font-size: 14px; }
 .fp-app .controls input[type=range] { width: 100%; }
+.fp-app .controls input.sep-slider { width: 40%; min-width: 140px; }
 .fp-app .seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
 .fp-app .seg span { margin-right: 4px; }
 .fp-app .seg button { border: 1px solid #cbd5e1; background: #fff; padding: 6px 12px; border-radius: 999px;
