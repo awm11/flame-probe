@@ -216,11 +216,14 @@ export default function App() {
       const canvasW = ((rightH - moveH - 2) * W) / HT;     // rig has a 1px border
       setLeftW(Math.max(420, Math.round(canvasW + 2)));
     };
+    // fit once the page has laid out, then only when the window size changes,
+    // so switching instrument or toggling options never resizes the diagram
     fit();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : null;
-    if (ro) { ro.observe(rightRef.current); ro.observe(moveRowRef.current); }
-    window.addEventListener("resize", fit);
-    return () => { if (ro) ro.disconnect(); window.removeEventListener("resize", fit); };
+    const t = setTimeout(fit, 150);
+    let lastW = window.innerWidth;
+    const onResize = () => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; fit(); } };
+    window.addEventListener("resize", onResize);
+    return () => { clearTimeout(t); window.removeEventListener("resize", onResize); };
   }, []);
 
   const canvasRef = useRef(null);
@@ -1149,7 +1152,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div>
-                    <small>Electroscope leaf divergence</small>
+                    <small>Leaf divergence</small>
                     <b>{leafDeg}°</b>
                     <em className={settling ? "warn" : flameOn ? "ok" : "off"}>{status}</em>
                   </div>
