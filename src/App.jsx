@@ -333,11 +333,13 @@ export default function App() {
             life: 1,
           });
         }
-        s.eAcc += flux * 16 * dt;
+        // the lead is full of free electrons: when charge flows they ALL start to
+        // drift at once, so show them appearing (fading in) all along the lead
+        s.eAcc += flux * 22 * dt;
         while (s.eAcc >= 1) {
           s.eAcc -= 1;
           // u = 0 at probe tip, 1 at instrument
-          s.wireE.push({ u: sign > 0 ? 1 : 0, fade: 1 });
+          s.wireE.push({ u: Math.random(), fade: 0 });
         }
       }
       s.capture.forEach((c) => {
@@ -363,9 +365,10 @@ export default function App() {
       const drift = (sign > 0 ? -1 : 1) * (0.2 + 0.5 * flux);
       s.wireE.forEach((el) => {
         el.u += drift * dt;
-        if (!flowing) el.fade -= dt * 1.5; // flow stopped: drift dies away
+        // fade in while flowing; fade out when the flow stops
+        el.fade = flowing ? Math.min(1, el.fade + dt * 2.5) : el.fade - dt * 1.5;
       });
-      s.wireE = s.wireE.filter((el) => el.u >= 0 && el.u <= 1 && el.fade > 0 && probe);
+      s.wireE = s.wireE.filter((el) => el.u >= 0 && el.u <= 1 && (el.fade > 0 || flowing) && probe);
       s.flashes.forEach((f) => { f.t -= dt; });
       s.flashes = s.flashes.filter((f) => f.t > 0);
 
@@ -809,7 +812,9 @@ export default function App() {
         s.wireE.forEach((el) => {
           const [ex, ey] = at(el.u);
           ctx.save();
-          ctx.globalAlpha = clamp(el.fade, 0, 1);
+          // also fade out as they approach either end of the lead
+          const edge = clamp(Math.min(el.u, 1 - el.u) / 0.04, 0, 1);
+          ctx.globalAlpha = clamp(el.fade, 0, 1) * edge;
           ctx.beginPath();
           ctx.arc(ex, ey, 5, 0, Math.PI * 2);
           ctx.fillStyle = "#f59e0b";
@@ -1298,8 +1303,10 @@ function ProbeText({ meter }) {
           meter, and the potential falls.
         </li>
         <li>
-          Move the probe back and forth and watch the electrons in the lead: they all drift the
-          same way at any instant, and reverse together when the flow reverses.
+          Move the probe back and forth and watch the electrons in the lead. The metal is already
+          full of free electrons, so when charge flows they <em>all</em> start drifting at once,
+          along the whole lead, not just from one end. They all drift the same way at any instant,
+          and reverse together when the flow reverses.
         </li>
         <li>
           Only a tiny charge is needed (picocoulombs), because the probe has a small capacitance:
