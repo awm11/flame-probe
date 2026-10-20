@@ -10,7 +10,7 @@ import React, { useEffect, useRef, useState } from "react";
    ========================================================================= */
 
 const W = 760;
-const H = 470;
+const H = 494;             // includes a row for the particle key
 const SHIFT_X = 24;         // whole drawing nudged left so it sits centred in the pane
 const TOP_PAD = 34;         // breathing room above the supply wires
 const HT = H + TOP_PAD;     // full canvas height
@@ -501,6 +501,40 @@ export default function App() {
         ctx.fillRect(XC - tw / 2, yM - 8, tw, 16);
         ctx.fillStyle = "#475569";
         ctx.fillText(label, XC, yM + 0.5);
+
+        // particle key, centred under the separation label
+        const items = [
+          { kind: "pos", text: "positive ion" },
+          { kind: "neg", text: "negative ion / electron" },
+        ];
+        if (probe) items.push({ kind: "el", text: "electron in metal lead" });
+        ctx.font = "11.5px system-ui, sans-serif";
+        const gapI = 18, sym = 18;
+        const widths = items.map((it) => sym + ctx.measureText(it.text).width);
+        const total = widths.reduce((a, b) => a + b, 0) + gapI * (items.length - 1);
+        let kx = XC - total / 2;
+        const ky = yM + 24;
+        items.forEach((it, i) => {
+          if (it.kind === "el") {
+            ctx.beginPath();
+            ctx.arc(kx + 6, ky, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#f59e0b";
+            ctx.fill();
+            ctx.fillStyle = "#1f2937";
+            ctx.font = "bold 10px system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("−", kx + 6, ky + 0.5);
+          } else {
+            drawIon(ctx, { x: kx + 7, y: ky, q: it.kind === "pos" ? 1 : -1, life: 1 });
+          }
+          ctx.font = "11.5px system-ui, sans-serif";
+          ctx.fillStyle = "#334155";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(it.text, kx + sym, ky + 0.5);
+          kx += widths[i] + gapI;
+        });
       }
 
       // guide line while a drag is locked to one axis
@@ -1211,11 +1245,6 @@ export default function App() {
           {mode === "probe" ? <ProbeText meter={meter} /> : <CandleText />}
         </div>
       )}
-        <div className="key">
-        <span><i className="dot pos">+</i> positive ion</span>
-        <span><i className="dot neg">−</i> negative ion / electron</span>
-          {mode === "probe" && <span><i className="dot el">−</i> electron in metal lead</span>}
-        </div>
       </section>
     </div>
   );
