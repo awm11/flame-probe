@@ -1340,7 +1340,7 @@ const css = `
 .fp-app .tabs button { border: 1px solid #cbd5e1; background: #fff; padding: 8px 16px;
   border-radius: 999px; font-size: 14px; cursor: pointer; }
 .fp-app .tabs button.on { background: #0f172a; color: #fff; border-color: #0f172a; }
-.fp-app .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 16px; }
+.fp-app .layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .fp-app .layout { grid-template-columns: 1fr; } }
 
 .fp-app .rig { position: relative; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
