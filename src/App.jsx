@@ -364,9 +364,10 @@ export default function App() {
       // field lines: uniform in the middle, bulging outward at the edges
       if (p.showField && p.pd > 0) {
         const col = "rgba(100,116,139,0.6)";
-        const y0 = PLATE_TOP + 42, y1 = PLATE_BOTTOM - 20;
-        for (let i = 0; i < 7; i++) {
-          const y = y0 + (i * (y1 - y0)) / 6;
+        // 9 equally spaced lines: the outer two (at the plate edges) bulge outwards
+        const yTop = PLATE_TOP + 6, yBot = PLATE_BOTTOM - 6, dy = (yBot - yTop) / 8;
+        for (let i = 1; i < 8; i++) {
+          const y = yTop + i * dy;
           drawArrow(ctx, rightX - 4, y, leftX + 4, y, col);
         }
         const c = Math.min(0.05 * gap, 14); // gentle outward bulge
