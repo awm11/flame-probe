@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 const W = 760;
 const H = 470;
+const SHIFT_X = 24;         // whole drawing nudged left so it sits centred in the pane
 const TOP_PAD = 34;         // breathing room above the supply wires
 const HT = H + TOP_PAD;     // full canvas height
 const PX_PER_CM = 38;
@@ -343,7 +344,7 @@ export default function App() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = "#f8fafc";
       ctx.fillRect(0, 0, W, HT);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, dpr * TOP_PAD); // everything below is drawn shifted down
+      ctx.setTransform(dpr, 0, 0, dpr, -dpr * SHIFT_X, dpr * TOP_PAD); // everything below is drawn shifted
 
       // supply wires from the EHT terminals (panel sits just above the canvas)
       ctx.strokeStyle = "#475569";
@@ -437,9 +438,15 @@ export default function App() {
       // plate labels
       ctx.font = "bold 12px system-ui, sans-serif";
       ctx.fillStyle = "#1d4ed8";
-      ctx.textAlign = "right";
-      ctx.fillText("0 V", leftX - PLATE_W - 6, PLATE_TOP + 112);
-      ctx.fillText("(earthed)", leftX - PLATE_W - 6, PLATE_TOP + 128);
+      {
+        // outside the plate if there's room on the left, otherwise just inside the gap
+        const lw = ctx.measureText("(earthed)").width;
+        const outside = leftX - PLATE_W - 6 - lw >= SHIFT_X + 4;
+        ctx.textAlign = outside ? "right" : "left";
+        const lx = outside ? leftX - PLATE_W - 6 : leftX + 6;
+        haloText(ctx, "0 V", lx, PLATE_TOP + 112);
+        haloText(ctx, "(earthed)", lx, PLATE_TOP + 128);
+      }
       ctx.fillStyle = "#b91c1c";
       ctx.textAlign = "left";
       ctx.fillText(`+${p.pd} V`, rightX + PLATE_W + 6, PLATE_TOP + 112);
@@ -842,7 +849,7 @@ export default function App() {
 
   const toCanvas = (e) => {
     const r = canvasRef.current.getBoundingClientRect();
-    return { cx: ((e.clientX - r.left) / r.width) * W, cy: ((e.clientY - r.top) / r.height) * HT - TOP_PAD };
+    return { cx: ((e.clientX - r.left) / r.width) * W + SHIFT_X, cy: ((e.clientY - r.top) / r.height) * HT - TOP_PAD };
   };
   const objNow = () => {
     const pc = params.current;
@@ -981,7 +988,7 @@ export default function App() {
         <div className="left">
           <div className="rig">
             <div className="overlay" style={{ width: W, height: HT, transform: `scale(${scale})` }}>
-            <div className="eht" style={{ left: EHT_X, top: EHT_Y + TOP_PAD, width: EHT_W }}>
+            <div className="eht" style={{ left: EHT_X - SHIFT_X, top: EHT_Y + TOP_PAD, width: EHT_W }}>
               <div className="eht-head">
                 <b>EHT SUPPLY</b>
                 <span className={pd > 0 ? "led on" : "led"} title={pd > 0 ? "output on" : "output off"} />
