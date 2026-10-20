@@ -18,13 +18,16 @@ const PLATE_W = 16;
 const MAX_PD = 5000;
 
 const WIRE_Y = 22;          // supply wires run along here
-const HANDLE_TOP = 384;     // insulating handle of the probe
-const HANDLE_BOT = 420;
+const ROD = 100;            // metal rod length, tip to handle (fixed)
+const HANDLE_H = 36;        // insulating handle, moves with the probe
+const handleTop = (tipY) => tipY + 8 + ROD;
+const handleBot = (tipY) => tipY + 8 + ROD + HANDLE_H;
+const WIRE_LOW = 476;       // the slack lead never hangs below this
 const LEAD_Y = 448;         // lead from probe to meter
 const RES_X0 = 600, RES_X1 = 644; // series resistor in the lead
 const MX = 706;             // meter / electroscope centre x
 const VM_Y = 398;           // voltmeter centre y
-const TIP_MIN = 135, TIP_MAX = 325, TIP_DEFAULT = 206;
+const TIP_MIN = 135, TIP_MAX = 312, TIP_DEFAULT = 206;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -132,11 +135,33 @@ function haloText(ctx, text, x, y) {
   ctx.fillText(text, x, y);
 }
 
-/* the lead from probe tip to the measuring instrument, as a polyline */
+/* the flexible lead hangs from the bottom of the handle to the resistor.
+   It has a fixed length, so it sags more when its ends are closer together. */
+function slackCurve(objX, tipY) {
+  const x0 = objX, y0 = handleBot(tipY);
+  const x3 = RES_X0, y3 = LEAD_Y;
+  const slack = clamp((520 - Math.hypot(x3 - x0, y3 - y0)) * 0.45, 18, 90);
+  return [
+    [x0, y0],
+    [x0 + 6, Math.min(y0 + slack, WIRE_LOW)],
+    [x3 - 50, Math.min(y3 + slack * 0.5, WIRE_LOW)],
+    [x3, y3],
+  ];
+}
+const bez = (c, t) => {
+  const u = 1 - t;
+  return [0, 1].map((k) =>
+    u * u * u * c[0][k] + 3 * u * u * t * c[1][k] + 3 * u * t * t * c[2][k] + t * t * t * c[3][k]);
+};
+
+/* the conducting path from probe tip to the measuring instrument, as a polyline */
 function leadPath(objX, tipY, meter) {
-  return meter === "electroscope"
-    ? [[objX, tipY + 8], [objX, LEAD_Y], [652, LEAD_Y], [652, 340], [MX - 15, 340]]
-    : [[objX, tipY + 8], [objX, LEAD_Y], [MX - 20, LEAD_Y], [MX - 20, VM_Y + 22]];
+  const c = slackCurve(objX, tipY);
+  const pts = [[objX, tipY + 8]];
+  for (let i = 0; i <= 20; i++) pts.push(bez(c, i / 20));
+  return pts.concat(meter === "electroscope"
+    ? [[652, LEAD_Y], [652, 340], [MX - 15, 340]]
+    : [[MX - 20, LEAD_Y], [MX - 20, VM_Y + 22]]);
 }
 
 /* leaf angle (radians) of the electroscope for a given potential */
@@ -342,7 +367,7 @@ export default function App() {
           const y = y0 + (i * (y1 - y0)) / 6;
           drawArrow(ctx, rightX - 4, y, leftX + 4, y, col);
         }
-        const c = Math.min(0.16 * gap, 40);
+        const c = Math.min(0.05 * gap, 14); // gentle outward bulge
         [[PLATE_TOP + 6, -1], [PLATE_BOTTOM - 6, 1]].forEach(([ye, dir]) => {
           ctx.strokeStyle = col;
           ctx.lineWidth = 1.5;
@@ -455,10 +480,14 @@ export default function App() {
         // lead (drawn under everything else)
         ctx.strokeStyle = "#475569";
         ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
         ctx.beginPath();
-        ctx.moveTo(objX, HANDLE_BOT);
-        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i][0], path[i][1]);
+        const sc = slackCurve(objX, tipY);
+        ctx.moveTo(sc[0][0], sc[0][1]);
+        ctx.bezierCurveTo(sc[1][0], sc[1][1], sc[2][0], sc[2][1], sc[3][0], sc[3][1]);
+        for (let i = 22; i < path.length; i++) ctx.lineTo(path[i][0], path[i][1]);
         ctx.stroke();
+        const hT = handleTop(tipY), hB = handleBot(tipY);
 
         // series resistor in the lead
         ctx.fillStyle = "#fff";
@@ -471,16 +500,16 @@ export default function App() {
         ctx.textAlign = "center";
         ctx.fillText("high R", (RES_X0 + RES_X1) / 2, LEAD_Y - 15);
 
-        // metal rod (telescopic) + insulating handle
+        // metal rod + insulating handle: one rigid piece that moves together
         ctx.strokeStyle = "#94a3b8";
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(objX, tipY + 8);
-        ctx.lineTo(objX, HANDLE_TOP);
+        ctx.lineTo(objX, hT);
         ctx.stroke();
         ctx.fillStyle = "#334155";
         ctx.beginPath();
-        ctx.roundRect(objX - 6, HANDLE_TOP, 12, HANDLE_BOT - HANDLE_TOP, 3);
+        ctx.roundRect(objX - 6, hT, 12, hB - hT, 3);
         ctx.fill();
         // gas jet nozzle
         ctx.fillStyle = "#64748b";
@@ -495,7 +524,7 @@ export default function App() {
 
         // move glyph beside the handle: four small arrows
         {
-          const gx = objX + 22, gy = (HANDLE_TOP + HANDLE_BOT) / 2;
+          const gx = objX + 22, gy = (hT + hB) / 2;
           ctx.fillStyle = "rgba(15,23,42,0.5)";
           [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => {
             const bx = gx + ux * 5, by = gy + uy * 5;
@@ -758,9 +787,16 @@ export default function App() {
           haloText(ctx, sign > 0 ? "+ ions drawn onto probe tip" : "− charges drawn onto probe tip", lx, ly);
           ctx.fillStyle = "#b45309";
           ctx.font = "11px system-ui, sans-serif";
-          const msg = sign > 0 ? "electrons in lead flow towards probe" : "electrons in lead flow towards meter";
-          const wx = clamp((objX + RES_X0) / 2, leftX + 100, W - 110);
-          haloText(ctx, msg, wx, LEAD_Y + 18);
+          // label the lead flow beside the rod, so it moves with the probe
+          const l1 = "electrons in lead";
+          const l2 = sign > 0 ? "flow up to probe ↑" : "flow to meter ↓";
+          const ry = (tipY + 8 + handleTop(tipY)) / 2;
+          const tw = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width);
+          const onLeft = objX - 12 - tw > leftX + 4;
+          ctx.textAlign = onLeft ? "right" : "left";
+          const rx = onLeft ? objX - 12 : objX + 12;
+          haloText(ctx, l1, rx, ry + 4);
+          haloText(ctx, l2, rx, ry + 18);
         }
       }
 
@@ -807,7 +843,7 @@ export default function App() {
   const nearObject = (cx, cy) => {
     const { x, y } = objNow();
     if (params.current.mode === "candle") return Math.abs(cx - x) < 30 && cy > 200 && cy < 442;
-    return Math.abs(cx - x) < 26 && cy > y - 45 && cy < HANDLE_BOT + 4;
+    return Math.abs(cx - x) < 26 && cy > y - 45 && cy < handleBot(y) + 4;
   };
   const place = (x, y) => {
     const { gap, leftX } = geometry(params.current.sep);
@@ -820,7 +856,7 @@ export default function App() {
     let start = null;
     if (nearObject(cx, cy)) {
       start = objNow();
-    } else if (cx > leftX && cx < rightX && cy > PLATE_TOP && cy < HANDLE_BOT) {
+    } else if (cx > leftX && cx < rightX && cy > PLATE_TOP && cy < PLATE_BOTTOM) {
       // click in the gap: jump there, then carry on dragging
       const { y } = objNow();
       const ty = params.current.mode === "probe" ? clamp(cy, TIP_MIN, TIP_MAX) : y;
@@ -899,14 +935,19 @@ export default function App() {
           <div className="rig">
             <div className="eht">
               <div className="eht-head">
-                <b>EHT supply</b>
-                <span>0–5 kV d.c.</span>
+                <b>EHT SUPPLY</b>
+                <span className={pd > 0 ? "led on" : "led"} title={pd > 0 ? "output on" : "output off"} />
               </div>
-              <div className="eht-meta">50 MΩ safety resistor · max 0.1 mA</div>
+              <div className="eht-face">
+                <div className="lcd" aria-live="polite">
+                  {(pd / 1000).toFixed(2)}<small>kV</small>
+                </div>
+                <div className="eht-spec">0–5 kV d.c.<br />50 MΩ limiting R<br />max 0.1 mA</div>
+              </div>
               <label className="eht-slider">
-                <span>Output p.d. <b>{pd} V</b></span>
+                <span>OUTPUT</span>
                 <input type="range" min="0" max={MAX_PD} step="100" value={pd}
-                  onChange={(e) => setPd(+e.target.value)} aria-label="EHT output p.d." />
+                  onChange={(e) => setPd(+e.target.value)} aria-label={`EHT output p.d., ${pd} volts`} />
               </label>
               <span ref={termL} className="term neg" title="negative terminal (earthed)">−</span>
               <span ref={termR} className="term pos" title="positive terminal">+</span>
@@ -1220,20 +1261,29 @@ const css = `
 @media (max-width: 900px) { .fp-app .layout { grid-template-columns: 1fr; } }
 
 .fp-app .rig { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding-top: 10px; overflow: hidden; }
-.fp-app .eht { position: relative; width: 30%; min-width: 196px; max-width: 250px; margin: 0 auto; background: #fb923c; border: 2px solid #c2410c;
-  border-radius: 8px; padding: 5px 9px 11px; color: #1c1917; box-shadow: 0 2px 0 #c2410c; }
-.fp-app .eht-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.fp-app .eht-head b { font-size: 14px; letter-spacing: 0.02em; }
-.fp-app .eht-head span { font-size: 12px; font-weight: 600; }
-.fp-app .eht-meta { font-size: 11px; opacity: 0.85; margin: 1px 0 4px; }
-.fp-app .eht-slider { display: grid; gap: 2px; font-size: 12.5px; }
-.fp-app .eht-slider input { width: 100%; accent-color: #7c2d12; }
-.fp-app .eht-slider b { font-variant-numeric: tabular-nums; }
+.fp-app .eht { position: relative; width: 30%; min-width: 196px; max-width: 250px; margin: 0 auto;
+  background: linear-gradient(#fdba74, #f97316 60%, #ea580c); border: 1px solid #9a3412;
+  border-radius: 7px; padding: 5px 8px 13px; color: #1c1917;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 3px 0 #9a3412, 0 4px 8px rgba(0,0,0,0.15); }
+.fp-app .eht-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.fp-app .eht-head b { font-size: 11.5px; letter-spacing: 0.12em; }
+.fp-app .led { width: 8px; height: 8px; border-radius: 50%; background: #7f1d1d; border: 1px solid #450a0a; }
+.fp-app .led.on { background: #ef4444; box-shadow: 0 0 6px #f87171; }
+.fp-app .eht-face { display: flex; gap: 7px; align-items: stretch; background: #e7e5e4; border: 1px solid #a8a29e;
+  border-radius: 4px; padding: 4px; }
+.fp-app .lcd { flex: none; background: #1c1917; color: #86efac; border-radius: 3px; padding: 2px 7px;
+  font: 600 18px/1.3 ui-monospace, Menlo, Consolas, monospace; display: flex; align-items: baseline; gap: 3px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.6); }
+.fp-app .lcd small { font-size: 10px; color: #4ade80; }
+.fp-app .eht-spec { font-size: 9.5px; line-height: 1.25; color: #44403c; align-self: center; }
+.fp-app .eht-slider { display: flex !important; align-items: center; gap: 6px; margin-top: 5px; font-size: 9.5px;
+  font-weight: 700; letter-spacing: 0.08em; }
+.fp-app .eht-slider input { flex: 1; min-width: 0; accent-color: #292524; }
 .fp-app .term { position: absolute; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;
-  color: #fff; border: 2px solid #1c1917; line-height: 1; }
-.fp-app .term.neg { left: 16%; transform: translateX(-50%); background: #1e293b; }
-.fp-app .term.pos { right: 16%; transform: translateX(50%); background: #b91c1c; }
+  display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;
+  color: #fff; line-height: 1; box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4); }
+.fp-app .term.neg { left: 16%; transform: translateX(-50%); background: #262626; }
+.fp-app .term.pos { right: 16%; transform: translateX(50%); background: #dc2626; }
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
 
