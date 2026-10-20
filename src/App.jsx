@@ -21,9 +21,11 @@ const PLATE_W = 16;
 const MAX_PD = 5000;
 
 const XC = 312;             // centre line of the plates (shifted left)
-const WIRE_NEG_Y = 10;      // − supply wire runs along here (to the far, earthed plate)
+const WIRE_NEG_Y = 4;      // − supply wire runs along here (to the far, earthed plate)
 const WIRE_POS_Y = 26;      // + supply wire runs along here
 const EHT_X = 570, EHT_Y = 34, EHT_W = 182; // EHT supply, in canvas units (top right)
+// terminal sockets sit on the front panel, in the top row (must match .term CSS)
+const TERM_NEG_X = EHT_X + EHT_W - 36, TERM_POS_X = EHT_X + EHT_W - 62, TERM_CY = EHT_Y + 15;
 const ROD = 60;            // metal rod length, tip to handle (fixed)
 const HANDLE_H = 36;        // insulating handle, moves with the probe
 const handleTop = (tipY) => tipY + 8 + ROD;
@@ -378,7 +380,7 @@ export default function App() {
       ctx.lineWidth = 2;
       ctx.beginPath();
       // − terminal (rightmost) → over the top → earthed plate; + terminal → + plate
-      const TERM_NEG = EHT_X + EHT_W - 22, TERM_POS = EHT_X + EHT_W - 50; // match .term CSS
+      const TERM_NEG = TERM_NEG_X, TERM_POS = TERM_POS_X;
       ctx.moveTo(TERM_NEG, EHT_Y); ctx.lineTo(TERM_NEG, WIRE_NEG_Y);
       ctx.lineTo(leftX - PLATE_W / 2, WIRE_NEG_Y); ctx.lineTo(leftX - PLATE_W / 2, PLATE_TOP);
       ctx.moveTo(TERM_POS, EHT_Y); ctx.lineTo(TERM_POS, WIRE_POS_Y);
@@ -1034,6 +1036,13 @@ export default function App() {
               <span className="term pos" title="positive terminal">+</span>
               <span className="term neg" title="negative terminal (earthed)">−</span>
             </div>
+            {/* the leads drawn over the panel's top edge, down into the sockets */}
+            <svg className="leads" width={W} height={HT} aria-hidden="true">
+              {[TERM_POS_X, TERM_NEG_X].map((tx) => (
+                <line key={tx} x1={tx - SHIFT_X} x2={tx - SHIFT_X} y1={EHT_Y + TOP_PAD - 2} y2={TERM_CY + TOP_PAD - 8}
+                  stroke="#475569" strokeWidth="2" strokeLinecap="round" />
+              ))}
+            </svg>
             </div>
             <canvas
               ref={canvasRef}
@@ -1406,11 +1415,12 @@ const css = `
 .fp-app .eht-slider { display: flex !important; align-items: center; gap: 6px; margin-top: 5px; font-size: 9.5px;
   font-weight: 700; letter-spacing: 0.08em; }
 .fp-app .eht-slider input { flex: 1; min-width: 0; accent-color: #292524; }
-.fp-app .term { position: absolute; top: -10px; width: 18px; height: 18px; border-radius: 50%;
+.fp-app .term { position: absolute; top: 5px; z-index: 1; width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;
   color: #fff; line-height: 1; box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4); }
-.fp-app .term.neg { right: 12px; background: #262626; }
-.fp-app .term.pos { right: 40px; background: #dc2626; }
+.fp-app .term.neg { right: 26px; background: #262626; }
+.fp-app .term.pos { right: 52px; background: #dc2626; }
+.fp-app .leads { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2; overflow: visible; }
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus, .fp-app canvas:focus-visible { outline: none; }
 
