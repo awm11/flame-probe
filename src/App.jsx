@@ -123,6 +123,19 @@ function drawArrow(ctx, x1, y1, x2, y2, color) {
   arrowHead(ctx, (x1 + x2) / 2, (y1 + y2) / 2, Math.atan2(y2 - y1, x2 - x1), color);
 }
 
+/* draw a + or − as strokes so it is exactly centred on (x, y) */
+function drawSign(ctx, x, y, q, half, width, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x - half, y); ctx.lineTo(x + half, y);
+  if (q > 0) { ctx.moveTo(x, y - half); ctx.lineTo(x, y + half); }
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawIon(ctx, ion) {
   const a = clamp(ion.life < 0.5 ? ion.life / 0.5 : 1, 0, 1);
   ctx.save();
@@ -131,11 +144,7 @@ function drawIon(ctx, ion) {
   ctx.arc(ion.x, ion.y, 7, 0, Math.PI * 2);
   ctx.fillStyle = ion.q > 0 ? "#dc2626" : "#2563eb";
   ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 13px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(ion.q > 0 ? "+" : "−", ion.x, ion.y + 0.5);
+  drawSign(ctx, ion.x, ion.y, ion.q, 3.5, 2, "#fff");
   ctx.restore();
 }
 
@@ -463,8 +472,8 @@ export default function App() {
       ctx.textBaseline = "middle";
       for (let i = 0; i < n; i++) {
         const y = PLATE_TOP + ((i + 0.5) * (PLATE_BOTTOM - PLATE_TOP)) / n;
-        ctx.fillText("−", leftX - PLATE_W / 2, y);
-        ctx.fillText("+", rightX + PLATE_W / 2, y);
+        drawSign(ctx, leftX - PLATE_W / 2, y, -1, 3.5, 2, "#fff");
+        drawSign(ctx, rightX + PLATE_W / 2, y, 1, 3.5, 2, "#fff");
       }
 
       // plate labels
@@ -517,14 +526,10 @@ export default function App() {
         items.forEach((it, i) => {
           if (it.kind === "el") {
             ctx.beginPath();
-            ctx.arc(kx + 6, ky, 5, 0, Math.PI * 2);
+            ctx.arc(kx + 7, ky, 5.5, 0, Math.PI * 2);
             ctx.fillStyle = "#f59e0b";
             ctx.fill();
-            ctx.fillStyle = "#1f2937";
-            ctx.font = "bold 10px system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("−", kx + 6, ky + 0.5);
+            drawSign(ctx, kx + 7, ky, -1, 2.5, 1.5, "#1f2937");
           } else {
             drawIon(ctx, { x: kx + 7, y: ky, q: it.kind === "pos" ? 1 : -1, life: 1 });
           }
@@ -853,11 +858,7 @@ export default function App() {
           ctx.arc(ex, ey, 5, 0, Math.PI * 2);
           ctx.fillStyle = "#f59e0b";
           ctx.fill();
-          ctx.fillStyle = "#1f2937";
-          ctx.font = "bold 10px system-ui, sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("−", ex, ey + 0.5);
+          drawSign(ctx, ex, ey, -1, 2.5, 1.5, "#1f2937");
           ctx.restore();
         });
 
