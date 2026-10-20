@@ -199,6 +199,30 @@ export default function App() {
   const [explainOpen, setExplainOpen] = useState(true);
   const [scale, setScale] = useState(1); // canvas display scale, for the HTML overlay
 
+  /* size the diagram so the left column is exactly as tall as the right column */
+  const rightRef = useRef(null);
+  const moveRowRef = useRef(null);
+  const [leftW, setLeftW] = useState(null);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  useEffect(() => {
+    const fit = () => {
+      const rc = rightRef.current, mr = moveRowRef.current;
+      if (!rc || !mr) return;
+      if (modeRef.current !== "probe") return; // candle view keeps the probe view's size
+      if (window.innerWidth <= 900) { setLeftW(null); return; } // single column on small screens
+      const rightH = rc.getBoundingClientRect().height;
+      const moveH = mr.getBoundingClientRect().height + 6; // + its top margin
+      const canvasW = ((rightH - moveH - 2) * W) / HT;     // rig has a 1px border
+      setLeftW(Math.max(420, Math.round(canvasW + 2)));
+    };
+    fit();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : null;
+    if (ro) { ro.observe(rightRef.current); ro.observe(moveRowRef.current); }
+    window.addEventListener("resize", fit);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener("resize", fit); };
+  }, []);
+
   const canvasRef = useRef(null);
   const drag = useRef(null); // active drag gesture (see pointer handlers)
   const sim = useRef({
@@ -968,7 +992,7 @@ export default function App() {
   const status = !flameOn ? "no flame – reading stuck" : settling ? "charge flowing…" : "equilibrium";
 
   return (
-    <div className="fp-app">
+    <div className="fp-app" style={leftW ? { "--lw": `${leftW}px` } : undefined}>
       <style>{css}</style>
       <header>
         <h1>The Flame Probe</h1>
@@ -1034,7 +1058,7 @@ export default function App() {
               {padBtn("down", "Move down", "▼", mode !== "probe")}
             </div>
           </div>
-          <div className="move-row">
+          <div className="move-row" ref={moveRowRef}>
             <span>
               {mode === "probe"
                 ? "Drag the probe anywhere between the plates. A mainly sideways or up-down drag stays on that line; drag diagonally to move freely."
@@ -1046,7 +1070,7 @@ export default function App() {
 
         </div>
 
-        <aside className="right">
+        <aside className="right" ref={rightRef}>
           <div className="panel-row">
           <div className="controls">
             <label className="pd-mobile">
@@ -1347,8 +1371,11 @@ const css = `
 .fp-app .tabs button { border: 1px solid #cbd5e1; background: #fff; padding: 8px 16px;
   border-radius: 999px; font-size: 14px; cursor: pointer; }
 .fp-app .tabs button.on { background: #0f172a; color: #fff; border-color: #0f172a; }
-.fp-app .layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
-@media (max-width: 900px) { .fp-app .layout { grid-template-columns: 1fr; } }
+.fp-app .layout { display: grid; grid-template-columns: minmax(0, var(--lw, 2.2fr)) 420px; gap: 16px;
+  align-items: start; justify-content: center; }
+.fp-app > header, .fp-app > .tabs, .fp-app > .layout, .fp-app > .explain {
+  max-width: calc(var(--lw, 100vw) + 436px); margin-left: auto; margin-right: auto; }
+@media (max-width: 900px) { .fp-app .layout { grid-template-columns: 1fr; } .fp-app > * { max-width: none !important; } }
 
 .fp-app .rig { position: relative; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
 .fp-app .overlay { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; z-index: 1; }
