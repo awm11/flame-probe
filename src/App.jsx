@@ -1282,8 +1282,8 @@ const css = `
 .fp-app .term { position: absolute; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;
   color: #fff; line-height: 1; box-shadow: inset 0 0 0 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4); }
-.fp-app .term.neg { left: 16%; transform: translateX(-50%); background: #262626; }
-.fp-app .term.pos { right: 16%; transform: translateX(50%); background: #dc2626; }
+.fp-app .term.neg { right: 30%; transform: translateX(50%); background: #262626; }
+.fp-app .term.pos { right: 11%; transform: translateX(50%); background: #dc2626; }
 .fp-app canvas { display: block; background: #f8fafc; }
 .fp-app canvas:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
 
