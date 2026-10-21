@@ -366,9 +366,11 @@ export default function App() {
           (!sphere || Math.hypot(i.x - SX, i.y - SY) > aPx) // ions reaching the sphere are absorbed
       );
 
-      /* ---- probe potential relaxes to local potential (only if flame lit) ---- */
-      if (probe && p.flameOn) {
-        s.probeV += (vLocal - s.probeV) * (1 - Math.exp(-dt * 1.8));
+      /* ---- probe potential relaxes to local potential ----
+         via the flame's ions, or (faster) by direct contact if the tip touches the sphere */
+      const touching = sphere && Math.hypot(objX - SX, tipY - SY) <= aPx + 0.5;
+      if (probe && (p.flameOn || touching)) {
+        s.probeV += (vLocal - s.probeV) * (1 - Math.exp(-dt * (touching ? 6 : 1.8)));
       }
 
       /* ---- charge transfer between flame and probe ---- */
@@ -376,12 +378,12 @@ export default function App() {
       s.dV = dV;
       const sign = dV > 0 ? 1 : -1;       // +1: + ions arrive, -1: − charges arrive
       const tipX = objX, tipCY = tipY;
-      const flux = probe && p.flameOn && p.showTransfer
+      const flux = probe && (p.flameOn || touching) && p.showTransfer
         ? clamp(Math.abs(dV) / (0.12 * Math.max(p.pd, 500)), 0, 1)
         : 0;
       s.flux = flux;
       const flowing = flux > 0.03;
-      if (flowing) {
+      if (flowing && p.flameOn && !touching) { // ions only carry the charge when not in contact
         s.capAcc += flux * 32 * dt;
         while (s.capAcc >= 1) {
           s.capAcc -= 1;
@@ -1033,7 +1035,9 @@ export default function App() {
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = sign > 0 ? "#b91c1c" : "#1d4ed8";
-          haloText(ctx, sign > 0 ? "+ ions drawn onto probe tip" : "− charges drawn onto probe tip", lx, ly);
+          haloText(ctx, touching
+            ? "touching the sphere: charge flows by contact"
+            : sign > 0 ? "+ ions drawn onto probe tip" : "− charges drawn onto probe tip", lx, ly);
           ctx.fillStyle = "#b45309";
           ctx.font = "11px system-ui, sans-serif";
           // label the lead flow beside the rod, so it moves with the probe
@@ -1041,7 +1045,10 @@ export default function App() {
           const l2 = sign > 0 ? "flow up to probe ↑" : "flow to meter ↓";
           const ry = (tipY + 8 + handleTop(tipY)) / 2;
           const tw = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width);
-          const onLeft = objX - 12 - tw > leftX + 4;
+          // beside the rod; around the sphere, on the side away from the sphere when there's room
+          const onLeft = sphere
+            ? (objX < SX || objX + 12 + tw > rightX - 4)
+            : objX - 12 - tw > leftX + 4;
           ctx.textAlign = onLeft ? "right" : "left";
           const rx = onLeft ? objX - 12 : objX + 12;
           haloText(ctx, l1, rx, ry + 4);
@@ -1053,7 +1060,7 @@ export default function App() {
       if (now - s.lastUi > 100) {
         s.lastUi = now;
         setReading(s.probeV);
-        setSettling(probe && p.flameOn && Math.abs(vLocal - s.probeV) > Math.max(5, 0.01 * p.pd));
+        setSettling(probe && (p.flameOn || touching) && Math.abs(vLocal - s.probeV) > Math.max(5, 0.01 * p.pd));
       }
 
       raf = requestAnimationFrame(loop);
@@ -1242,7 +1249,11 @@ export default function App() {
   const vLocal = localPotential(mode, pd, sep, rad, pos, tipY);
   const E = sphereMode ? vLocal / (rCm / 100) : pd / (sep / 100); // V/m
   const leafDeg = Math.round((leafAngle(reading) * 180) / Math.PI);
-  const status = !flameOn ? "no flame – reading stuck" : settling ? "charge flowing…" : "equilibrium";
+  const touchingNow = sphereMode && rCm <= rad + 0.02;
+  const live = flameOn || touchingNow; // something can carry charge to the probe
+  const status = touchingNow && !flameOn
+    ? (settling ? "charging by contact…" : "touching the sphere")
+    : !flameOn ? "no flame – reading stuck" : settling ? "charge flowing…" : "equilibrium";
 
   return (
     <div className="fp-app" style={leftW ? { "--lw": `${leftW}px` } : undefined}>
@@ -1432,13 +1443,13 @@ export default function App() {
                   <div>
                     <small>Voltmeter reading</small>
                     <b>{Math.round(reading)} V</b>
-                    <em className={settling ? "warn" : flameOn ? "ok" : "off"}>{status}</em>
+                    <em className={settling ? "warn" : live ? "ok" : "off"}>{status}</em>
                   </div>
                 ) : (
                   <div>
                     <small>Leaf divergence</small>
                     <b>{leafDeg}°</b>
-                    <em className={settling ? "warn" : flameOn ? "ok" : "off"}>{status}</em>
+                    <em className={settling ? "warn" : live ? "ok" : "off"}>{status}</em>
                   </div>
                 )}
               </>
@@ -1695,6 +1706,11 @@ function SphereText() {
         <li>
           Record V and r, then plot V against 1/r: a straight line through the origin, with gradient
           V<sub>s</sub>a = Q/(4πε₀).
+        </li>
+        <li>
+          Turn the flame off and touch the sphere with the probe: it charges by contact to
+          V<sub>s</sub>. Move it away and the reading stays at V<sub>s</sub>: with no flame there is
+          nothing to let the extra charge leave.
         </li>
         <li>
           Change the radius: at the same V<sub>s</sub>, a bigger sphere holds more charge
