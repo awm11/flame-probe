@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { BrandLogo, SupportLinks } from "./Branding.jsx";
 
 /* =========================================================================
    Flame Probe Simulator — A Level Physics (electric fields & potential)
@@ -1258,9 +1259,12 @@ export default function App() {
   return (
     <div className="fp-app" style={leftW ? { "--lw": `${leftW}px` } : undefined}>
       <style>{css}</style>
-      <header>
-        <h1>The Flame Probe</h1>
-        <p className="sub">Investigating electric potential around charged conductors</p>
+      <header className="has-brand">
+        <div>
+          <h1>The Flame Probe</h1>
+          <p className="sub">Investigating electric potential around charged conductors</p>
+        </div>
+        <BrandLogo />
       </header>
 
       <div className="tabs">
@@ -1485,6 +1489,8 @@ export default function App() {
         </div>
       )}
       </section>
+
+      <SupportLinks className="page-support" />
     </div>
   );
 }

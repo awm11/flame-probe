@@ -1,0 +1,95 @@
+/* awm Physics branding */
+
+.awm-logo-link {
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+  border-radius: 12px;
+  transition: transform 0.2s ease;
+}
+.awm-logo-link:hover,
+.awm-logo-link:focus-visible { transform: scale(1.15) rotate(10deg); }
+.awm-logo-link img {
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+
+/* Header: title on the left, logo at the right end of the row */
+.fp-app > header.has-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Support links: one centred row at the bottom of the page */
+.awm-support {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+.fp-app > .awm-support.page-support {
+  max-width: calc(var(--lw, 100vw) + 436px); /* same width as the layout above */
+  margin: 16px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+.awm-contact {
+  color: #475569;
+  font-size: 13px;
+  text-decoration: none;
+}
+.awm-contact:hover,
+.awm-contact:focus-visible {
+  color: #0f172a;
+  text-decoration: underline;
+}
+.awm-more-sims {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.awm-more-sims:hover,
+.awm-more-sims:focus-visible { color: #c2410c; }
+.awm-more-sims img {
+  width: 30px;
+  height: 30px;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.awm-more-sims:hover img,
+.awm-more-sims:focus-visible img { transform: scale(1.15) rotate(10deg); }
+
+/* Classes used by BuyMeCoffee.jsx. The embedded button is drawn at a fixed
+   250 × 60, so it is shown at 70% inside a frame of the reduced size. */
+.coffee-embed-frame {
+  flex: none;
+  display: inline-block;
+  width: 175px;
+  height: 42px;
+  line-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+.coffee-embed-frame:hover,
+.coffee-embed-frame:focus-within { transform: scale(1.06); }
+.coffee-embed {
+  width: 250px;
+  height: 60px;
+  border: 0;
+  overflow: hidden;
+  transform: scale(0.7);
+  transform-origin: 0 0;
+}
+
+@media (max-width: 760px) {
+  .awm-logo-link img { width: 36px; height: 36px; }
+}
