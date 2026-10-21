@@ -48,18 +48,27 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // sphere view: a charged metal sphere hanging from its supply lead
 const SX = 196, SY = 150;               // sphere centre (canvas units)
-const SPH_XMIN = 90, SPH_XMAX = 540;    // horizontal range of the probe in the sphere view
+const SPH_XMIN = 40, SPH_XMAX = 545;    // horizontal range of the probe in the sphere view
+const SPH_TIP_MIN = 60, SPH_TIP_MAX = 330; // vertical range of the probe tip in the sphere view
 const SPH_START_POS = (SX + 6 * PX_PER_CM - SPH_XMIN) / (SPH_XMAX - SPH_XMIN); // r = 6 cm
-const SPH_KEEP = 14;                    // px kept clear between the probe and the sphere
 const EARTH_X = 60;                     // where the supply's − terminal is earthed (sphere view)
 
-/* probe tip in the sphere view: the tip (and the rod below it) is kept clear of the sphere */
+/* probe tip in the sphere view. The tip may touch the sphere but not enter it, and it
+   can't sit directly above the sphere (the rod below the tip would pass through it). */
 function sphereProbe(pos, tipY, aCm) {
-  let x = SPH_XMIN + pos * (SPH_XMAX - SPH_XMIN);
-  const R = aCm * PX_PER_CM + SPH_KEEP;
-  if (tipY < SY + R && Math.abs(x - SX) < R) x = x < SX ? SX - R : SX + R;
-  return { x, y: tipY };
+  let x = SPH_XMIN + pos * (SPH_XMAX - SPH_XMIN), y = tipY;
+  const a = aCm * PX_PER_CM;
+  const dx = x - SX, dy = y - SY, rr = Math.hypot(dx, dy);
+  if (rr < a) {
+    // inside: move out to the nearest point on the surface
+    if (rr < 1e-6) { x = SX + a; y = SY; } else { x = SX + (dx * a) / rr; y = SY + (dy * a) / rr; }
+  }
+  if (y < SY && Math.abs(x - SX) < a) x = x < SX ? SX - a : SX + a; // above the sphere
+  return { x, y };
 }
+// limits for the probe/candle position in each view
+const tipRange = (mode) => (mode === "sphere" ? [SPH_TIP_MIN, SPH_TIP_MAX] : [TIP_MIN, TIP_MAX]);
+const posRange = (mode) => (mode === "sphere" ? [0, 1] : [0.05, 0.95]);
 /* potential of the probe's surroundings: linear between the plates, Vs·a/r around the sphere */
 function localPotential(mode, pd, sep, aCm, pos, tipY) {
   if (mode !== "sphere") return pd * pos;
@@ -574,7 +583,10 @@ export default function App() {
         ctx.fillStyle = "#b91c1c";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        haloText(ctx, `+${p.pd} V`, SX, SY + aPx + 14);
+        // label at the upper left, where the probe can't reach (it can't go above the sphere)
+        ctx.textAlign = "right";
+        haloText(ctx, `+${p.pd} V`, SX - aPx * 0.72 - 2, SY - aPx * 0.72 - 6);
+        ctx.textAlign = "center";
         // r: dashed line from the centre to the probe tip
         ctx.save();
         ctx.setLineDash([4, 4]);
@@ -1081,10 +1093,10 @@ export default function App() {
   const place = (x, y) => {
     const pc = params.current;
     if (pc.mode === "sphere") {
-      const ty = Math.round(clamp(y, TIP_MIN, TIP_MAX));
-      const q = sphereProbe(clamp((x - SPH_XMIN) / (SPH_XMAX - SPH_XMIN), 0.05, 0.95), ty, pc.rad);
+      const ty = Math.round(clamp(y, SPH_TIP_MIN, SPH_TIP_MAX));
+      const q = sphereProbe(clamp((x - SPH_XMIN) / (SPH_XMAX - SPH_XMIN), 0, 1), ty, pc.rad);
       setPos(Math.round(clamp((q.x - SPH_XMIN) / (SPH_XMAX - SPH_XMIN), 0, 1) * 1000) / 1000);
-      setTipY(ty);
+      setTipY(Math.round(q.y));
       return;
     }
     const { gap, leftX } = geometry(pc.sep);
@@ -1101,7 +1113,8 @@ export default function App() {
     } else if (cx > leftX && cx < rightX && cy > PLATE_TOP && cy < PLATE_BOTTOM) {
       // click in the gap: jump there, then carry on dragging
       const { y } = objNow();
-      const ty = params.current.mode !== "candle" ? clamp(cy, TIP_MIN, TIP_MAX) : y;
+      const [t0, t1] = tipRange(params.current.mode);
+      const ty = params.current.mode !== "candle" ? clamp(cy, t0, t1) : y;
       place(cx, ty);
       start = { x: cx, y: ty };
     }
@@ -1116,6 +1129,8 @@ export default function App() {
     if (!d) { setHover(nearObject(cx, cy)); return; }
     const dx = cx - d.sx, dy = cy - d.sy;
     if (params.current.mode === "candle") { place(d.ox + dx, d.oy); return; }
+    // around the sphere the probe simply follows the pointer, with no axis locking
+    if (params.current.mode === "sphere") { d.lock = "free"; place(d.ox + dx, d.oy + dy); return; }
 
     if (d.lock === "pending") {
       if (Math.hypot(dx, dy) < DEAD_ZONE) return;
@@ -1137,16 +1152,24 @@ export default function App() {
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       e.preventDefault();
       const step = (big ? 0.1 : 0.01) * (e.key === "ArrowLeft" ? -1 : 1);
-      setPos((p) => Math.round(clamp(p + step, 0.05, 0.95) * 1000) / 1000);
+      const [p0, p1] = posRange(mode);
+      setPos((p) => Math.round(clamp(p + step, p0, p1) * 1000) / 1000);
     }
     if (mode !== "candle" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       e.preventDefault();
       const step = (big ? 20 : 4) * (e.key === "ArrowUp" ? -1 : 1);
-      setTipY((y) => clamp(y + step, TIP_MIN, TIP_MAX));
+      const [t0, t1] = tipRange(mode);
+      setTipY((y) => clamp(y + step, t0, t1));
     }
   };
-  const nudgeX = (d) => setPos((p) => Math.round(clamp(p + d, 0.05, 0.95) * 1000) / 1000);
-  const nudgeY = (d) => setTipY((y) => clamp(y + d, TIP_MIN, TIP_MAX));
+  const nudgeX = (d) => {
+    const [p0, p1] = posRange(mode);
+    setPos((p) => Math.round(clamp(p + d, p0, p1) * 1000) / 1000);
+  };
+  const nudgeY = (d) => {
+    const [t0, t1] = tipRange(mode);
+    setTipY((y) => clamp(y + d, t0, t1));
+  };
 
   /* direction pad: one step on press; hold to move continuously after a short pause */
   const hold = useRef(null);
