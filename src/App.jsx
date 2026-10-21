@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 
 /* =========================================================================
    Flame Probe Simulator — A Level Physics (electric fields & potential)
-   Two views:
-     1. Flame probe  – measuring potential between parallel plates
-     2. Candle only  – a candle flame between charged plates
-   Left plate  = 0 V (earthed)
-   Right plate = +V  (positive)
+   Three views:
+     1. Candle          – a candle flame between charged plates
+     2. Parallel plates – flame probe measuring potential in a uniform field
+     3. Sphere          – flame probe around a charged hanging sphere (V ∝ 1/r)
+   Plates: left plate 0 V (earthed), right plate +V.
    ========================================================================= */
 
 const W = 760;
@@ -45,6 +45,28 @@ const TIP_MIN = 115, TIP_MAX = 316, TIP_DEFAULT = 186;
 const ES_CAP = 292;         // electroscope cap height (case bottom at 396, clear of the lead)
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// sphere view: a charged metal sphere hanging from its supply lead
+const SX = 196, SY = 150;               // sphere centre (canvas units)
+const SPH_XMIN = 90, SPH_XMAX = 540;    // horizontal range of the probe in the sphere view
+const SPH_START_POS = (SX + 6 * PX_PER_CM - SPH_XMIN) / (SPH_XMAX - SPH_XMIN); // r = 6 cm
+const SPH_KEEP = 14;                    // px kept clear between the probe and the sphere
+const EARTH_X = 60;                     // where the supply's − terminal is earthed (sphere view)
+
+/* probe tip in the sphere view: the tip (and the rod below it) is kept clear of the sphere */
+function sphereProbe(pos, tipY, aCm) {
+  let x = SPH_XMIN + pos * (SPH_XMAX - SPH_XMIN);
+  const R = aCm * PX_PER_CM + SPH_KEEP;
+  if (tipY < SY + R && Math.abs(x - SX) < R) x = x < SX ? SX - R : SX + R;
+  return { x, y: tipY };
+}
+/* potential of the probe's surroundings: linear between the plates, Vs·a/r around the sphere */
+function localPotential(mode, pd, sep, aCm, pos, tipY) {
+  if (mode !== "sphere") return pd * pos;
+  const { x, y } = sphereProbe(pos, tipY, aCm);
+  const rCm = Math.hypot(x - SX, y - SY) / PX_PER_CM;
+  return (pd * aCm) / Math.max(rCm, aCm);
+}
 
 function geometry(sep) {
   const gap = sep * PX_PER_CM;
@@ -194,10 +216,11 @@ const leafAngle = (v) => (55 * Math.sqrt(clamp(v / MAX_PD, 0, 1)) * Math.PI) / 1
 /* ---------- main component ---------- */
 
 export default function App() {
-  const [mode, setMode] = useState("probe"); // "probe" | "candle"
+  const [mode, setMode] = useState("probe"); // "candle" | "probe" (parallel plates) | "sphere"
   const [meter, setMeter] = useState("voltmeter"); // "voltmeter" | "electroscope"
   const [pd, setPd] = useState(START_PD);
   const [sep, setSep] = useState(10);
+  const [rad, setRad] = useState(2); // sphere radius a / cm
   const [pos, setPos] = useState(START_POS);
   const [tipY, setTipY] = useState(TIP_DEFAULT);
   const [showEq, setShowEq] = useState(true);
@@ -247,7 +270,7 @@ export default function App() {
     ePhase: 0, eAlpha: 0, eDir: 1, // evenly spaced row of drifting electrons in the lead
   });
   const params = useRef({});
-  params.current = { mode, meter, pd, sep, pos, tipY, showEq, showField, flameOn, showTransfer, showIons };
+  params.current = { mode, meter, pd, sep, pos, tipY, showEq, showField, flameOn, showTransfer, showIons, rad };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -276,13 +299,18 @@ export default function App() {
       const s = sim.current;
       s.t += dt;
 
-      const { gap, leftX, rightX } = geometry(p.sep);
+      const sphere = p.mode === "sphere";
+      const plates = !sphere;
+      let { gap, leftX, rightX } = geometry(p.sep);
+      if (sphere) { leftX = 40; rightX = 560; } // bounds for ions and labels in the sphere view
+      const aPx = p.rad * PX_PER_CM;
       // normalised field strength: 1 = 1000 V across 10 cm (10 kV/m)
       const e = (p.pd / 1000) / (p.sep / 10);
-      const objX = leftX + p.pos * gap;
-      const vLocal = p.pd * p.pos;
-      const probe = p.mode === "probe";
-      const tipY = p.tipY;
+      let objX = leftX + p.pos * gap;
+      let tipY = p.tipY;
+      if (sphere) ({ x: objX, y: tipY } = sphereProbe(p.pos, p.tipY, p.rad));
+      const vLocal = localPotential(p.mode, p.pd, p.sep, p.rad, p.pos, p.tipY);
+      const probe = p.mode !== "candle"; // views with a flame probe
 
       /* ---- flame geometry for this frame ---- */
       const flameOnNow = !probe || p.flameOn;
@@ -308,13 +336,23 @@ export default function App() {
       const vPos = -Math.min(30 * e, 260);
       const vNeg = Math.min(55 * e, 420);
       s.ions.forEach((ion) => {
-        const vx = ion.q > 0 ? vPos : vNeg;
+        let vx, vy = 0;
+        if (sphere) {
+          // radial field E = Vs·a/r²: + ions pushed away from the sphere, − charges pulled in
+          const dx = ion.x - SX, dy = ion.y - SY, rr = Math.hypot(dx, dy) || 1;
+          const eL = (p.pd * p.rad) / (100 * (rr / PX_PER_CM) ** 2); // same units as e
+          const sp = ion.q > 0 ? Math.min(30 * eL, 260) : -Math.min(55 * eL, 420);
+          vx = (sp * dx) / rr; vy = (sp * dy) / rr;
+        } else {
+          vx = ion.q > 0 ? vPos : vNeg;
+        }
         ion.x += (vx + (Math.random() - 0.5) * 30) * dt;
-        ion.y += (-28 + (Math.random() - 0.5) * 20) * dt;
+        ion.y += (vy - 28 + (Math.random() - 0.5) * 20) * dt;
         ion.life -= dt * (p.pd < 1 ? 0.8 : 0.15);
       });
       s.ions = s.ions.filter(
-        (i) => i.life > 0 && i.x > leftX + 7 && i.x < rightX - 7 && i.y > PLATE_TOP - 10
+        (i) => i.life > 0 && i.x > leftX + 7 && i.x < rightX - 7 && i.y > (sphere ? -20 : PLATE_TOP - 10) &&
+          (!sphere || Math.hypot(i.x - SX, i.y - SY) > aPx) // ions reaching the sphere are absorbed
       );
 
       /* ---- probe potential relaxes to local potential (only if flame lit) ---- */
@@ -390,21 +428,51 @@ export default function App() {
       ctx.beginPath();
       // − terminal (rightmost) → over the top → earthed plate; + terminal → + plate
       const TERM_NEG = TERM_NEG_X, TERM_POS = TERM_POS_X;
-      ctx.moveTo(TERM_NEG, EHT_Y); ctx.lineTo(TERM_NEG, WIRE_NEG_Y);
-      ctx.lineTo(leftX - PLATE_W / 2, WIRE_NEG_Y); ctx.lineTo(leftX - PLATE_W / 2, PLATE_TOP);
-      ctx.moveTo(TERM_POS, EHT_Y); ctx.lineTo(TERM_POS, WIRE_POS_Y);
-      ctx.lineTo(rightX + PLATE_W / 2, WIRE_POS_Y); ctx.lineTo(rightX + PLATE_W / 2, PLATE_TOP);
-      ctx.stroke();
+      if (plates) {
+        ctx.moveTo(TERM_NEG, EHT_Y); ctx.lineTo(TERM_NEG, WIRE_NEG_Y);
+        ctx.lineTo(leftX - PLATE_W / 2, WIRE_NEG_Y); ctx.lineTo(leftX - PLATE_W / 2, PLATE_TOP);
+        ctx.moveTo(TERM_POS, EHT_Y); ctx.lineTo(TERM_POS, WIRE_POS_Y);
+        ctx.lineTo(rightX + PLATE_W / 2, WIRE_POS_Y); ctx.lineTo(rightX + PLATE_W / 2, PLATE_TOP);
+        ctx.stroke();
 
-      // earth on the 0 V plate
-      ctx.beginPath();
-      ctx.moveTo(leftX - PLATE_W / 2, PLATE_BOTTOM);
-      ctx.lineTo(leftX - PLATE_W / 2, PLATE_BOTTOM + 16);
-      ctx.stroke();
-      drawEarth(ctx, leftX - PLATE_W / 2, PLATE_BOTTOM + 16);
+        // earth on the 0 V plate
+        ctx.beginPath();
+        ctx.moveTo(leftX - PLATE_W / 2, PLATE_BOTTOM);
+        ctx.lineTo(leftX - PLATE_W / 2, PLATE_BOTTOM + 16);
+        ctx.stroke();
+        drawEarth(ctx, leftX - PLATE_W / 2, PLATE_BOTTOM + 16);
+      } else {
+        // − terminal to earth; + terminal down to the hanging sphere
+        ctx.moveTo(TERM_NEG, EHT_Y); ctx.lineTo(TERM_NEG, WIRE_NEG_Y);
+        ctx.lineTo(EARTH_X, WIRE_NEG_Y); ctx.lineTo(EARTH_X, 40);
+        ctx.moveTo(TERM_POS, EHT_Y); ctx.lineTo(TERM_POS, WIRE_POS_Y);
+        ctx.lineTo(SX, WIRE_POS_Y); ctx.lineTo(SX, SY - aPx);
+        ctx.stroke();
+        drawEarth(ctx, EARTH_X, 40);
+        ctx.font = "bold 11px system-ui, sans-serif";
+        ctx.fillStyle = "#1d4ed8";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText("0 V (earth)", EARTH_X + 18, 46);
+      }
 
       // field lines: uniform in the middle, bulging outward at the edges
-      if (p.showField && p.pd > 0) {
+      if (p.showField && p.pd > 0 && sphere) {
+        // radial field lines from the sphere, pointing outwards (away from + charge)
+        const col = "rgba(100,116,139,0.6)";
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.5;
+        for (let k = 0; k < 12; k++) {
+          const ang = (k * Math.PI) / 6 + Math.PI / 12;
+          const c = Math.cos(ang), sn = Math.sin(ang);
+          ctx.beginPath();
+          ctx.moveTo(SX + (aPx + 3) * c, SY + (aPx + 3) * sn);
+          ctx.lineTo(SX + (aPx + 800) * c, SY + (aPx + 800) * sn);
+          ctx.stroke();
+          [70, 230].forEach((dr) => arrowHead(ctx, SX + (aPx + dr) * c, SY + (aPx + dr) * sn, ang, col));
+        }
+      }
+      if (p.showField && p.pd > 0 && plates) {
         const col = "rgba(100,116,139,0.6)";
         // 9 equally spaced lines: the outer two (at the plate edges) bulge outwards
         const yTop = PLATE_TOP + 6, yBot = PLATE_BOTTOM - 6, dy = (yBot - yTop) / 8;
@@ -424,8 +492,37 @@ export default function App() {
         });
       }
 
+      // equipotentials around the sphere: r = 2a, 3a, 4a … are at Vs/2, Vs/3, Vs/4 …
+      if (p.showEq && sphere) {
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "rgba(22,163,74,0.6)";
+        for (let n = 2; n <= 6; n++) {
+          ctx.beginPath();
+          ctx.arc(SX, SY, n * aPx, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.font = "10.5px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (let n = 2; n <= 6; n++) {
+          // label each circle where it crosses a line 25° below horizontal, to the right
+          const x = SX + n * aPx * Math.cos(0.44), y = SY + n * aPx * Math.sin(0.44);
+          if (x > rightX - 20 || y > PLATE_BOTTOM + 30) continue;
+          const label = `${Math.round(p.pd / n)} V`;
+          const tw = ctx.measureText(label).width + 8;
+          ctx.fillStyle = "rgba(240,253,244,0.95)";
+          ctx.beginPath();
+          ctx.roundRect(x - tw / 2, y - 7, tw, 14, 4);
+          ctx.fill();
+          ctx.fillStyle = "#15803d";
+          ctx.fillText(label, x, y + 0.5);
+        }
+      }
+
       // equipotentials (labels along the top, inside the gap)
-      if (p.showEq) {
+      if (p.showEq && plates) {
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 1.2;
         for (let k = 1; k <= 4; k++) {
@@ -455,6 +552,51 @@ export default function App() {
         }
       }
 
+      if (sphere) {
+        // the hanging metal sphere, shaded, with + charge spread over its surface
+        const g = ctx.createRadialGradient(SX - aPx * 0.35, SY - aPx * 0.4, aPx * 0.08, SX, SY, aPx);
+        g.addColorStop(0, "#f8fafc");
+        g.addColorStop(0.45, "#cbd5e1");
+        g.addColorStop(1, "#64748b");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(SX, SY, aPx, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        const nq = p.pd > 0 ? Math.round((5 + (13 * p.pd) / MAX_PD) * (p.rad / 2)) : 0;
+        for (let i = 0; i < nq; i++) {
+          const ang = (i / nq) * Math.PI * 2 - Math.PI / 2;
+          drawSign(ctx, SX + (aPx - 9) * Math.cos(ang), SY + (aPx - 9) * Math.sin(ang), 1, 3.5, 2, "#dc2626");
+        }
+        ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.fillStyle = "#b91c1c";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        haloText(ctx, `+${p.pd} V`, SX, SY + aPx + 14);
+        // r: dashed line from the centre to the probe tip
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(51,65,85,0.6)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(SX, SY);
+        ctx.lineTo(objX, tipY);
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = "#334155";
+        ctx.beginPath();
+        ctx.arc(SX, SY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        const rCm = Math.hypot(objX - SX, tipY - SY) / PX_PER_CM;
+        ctx.font = "11.5px system-ui, sans-serif";
+        ctx.fillStyle = "#334155";
+        const mx = (SX + objX) / 2, my = (SY + tipY) / 2;
+        haloText(ctx, `r = ${rCm.toFixed(1)} cm`, mx, my - 10);
+      }
+
+      if (plates) {
       // plates
       ctx.fillStyle = "#1d4ed8";
       ctx.fillRect(leftX - PLATE_W, PLATE_TOP, PLATE_W, PLATE_BOTTOM - PLATE_TOP);
@@ -488,10 +630,12 @@ export default function App() {
       ctx.fillStyle = "#b91c1c";
       ctx.textAlign = "left";
       ctx.fillText(`+${p.pd} V`, rightX + PLATE_W + 6, PLATE_TOP + 112);
+      }
 
       // separation marker along the very bottom
       {
         const yM = 456;
+        if (plates) {
         ctx.strokeStyle = "#64748b";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -507,6 +651,7 @@ export default function App() {
         ctx.fillRect(XC - tw / 2, yM - 8, tw, 16);
         ctx.fillStyle = "#475569";
         ctx.fillText(label, XC, yM + 0.5);
+        }
 
         // particle key, centred under the separation label
         const items = [
@@ -924,6 +1069,7 @@ export default function App() {
   };
   const objNow = () => {
     const pc = params.current;
+    if (pc.mode === "sphere") return sphereProbe(pc.pos, pc.tipY, pc.rad);
     const { gap, leftX } = geometry(pc.sep);
     return { x: leftX + pc.pos * gap, y: pc.tipY };
   };
@@ -933,20 +1079,29 @@ export default function App() {
     return Math.abs(cx - x) < 26 && cy > y - 45 && cy < handleBot(y) + 4;
   };
   const place = (x, y) => {
-    const { gap, leftX } = geometry(params.current.sep);
+    const pc = params.current;
+    if (pc.mode === "sphere") {
+      const ty = Math.round(clamp(y, TIP_MIN, TIP_MAX));
+      const q = sphereProbe(clamp((x - SPH_XMIN) / (SPH_XMAX - SPH_XMIN), 0.05, 0.95), ty, pc.rad);
+      setPos(Math.round(clamp((q.x - SPH_XMIN) / (SPH_XMAX - SPH_XMIN), 0, 1) * 1000) / 1000);
+      setTipY(ty);
+      return;
+    }
+    const { gap, leftX } = geometry(pc.sep);
     setPos(Math.round(clamp((x - leftX) / gap, 0.05, 0.95) * 1000) / 1000);
-    if (params.current.mode === "probe") setTipY(Math.round(clamp(y, TIP_MIN, TIP_MAX)));
+    if (pc.mode === "probe") setTipY(Math.round(clamp(y, TIP_MIN, TIP_MAX)));
   };
   const onPointerDown = (e) => {
     const { cx, cy } = toCanvas(e);
-    const { leftX, rightX } = geometry(params.current.sep);
+    const { leftX, rightX } = params.current.mode === "sphere"
+      ? { leftX: SPH_XMIN, rightX: SPH_XMAX } : geometry(params.current.sep);
     let start = null;
     if (nearObject(cx, cy)) {
       start = objNow();
     } else if (cx > leftX && cx < rightX && cy > PLATE_TOP && cy < PLATE_BOTTOM) {
       // click in the gap: jump there, then carry on dragging
       const { y } = objNow();
-      const ty = params.current.mode === "probe" ? clamp(cy, TIP_MIN, TIP_MAX) : y;
+      const ty = params.current.mode !== "candle" ? clamp(cy, TIP_MIN, TIP_MAX) : y;
       place(cx, ty);
       start = { x: cx, y: ty };
     }
@@ -984,7 +1139,7 @@ export default function App() {
       const step = (big ? 0.1 : 0.01) * (e.key === "ArrowLeft" ? -1 : 1);
       setPos((p) => Math.round(clamp(p + step, 0.05, 0.95) * 1000) / 1000);
     }
-    if (mode === "probe" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    if (mode !== "candle" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       e.preventDefault();
       const step = (big ? 20 : 4) * (e.key === "ArrowUp" ? -1 : 1);
       setTipY((y) => clamp(y + step, TIP_MIN, TIP_MAX));
@@ -1031,10 +1186,33 @@ export default function App() {
     </button>
   );
 
+  /* ---------- switching view ---------- */
+  const savedPos = useRef({});
+  const switchMode = (m) => {
+    if (m === mode) return;
+    savedPos.current[mode] = { pos, tipY };
+    const t = savedPos.current[m] ||
+      (m === "sphere" ? { pos: SPH_START_POS, tipY: SY } : { pos: START_POS, tipY: TIP_DEFAULT });
+    drag.current = null;
+    setPos(t.pos);
+    setTipY(t.tipY);
+    setMode(m);
+    // start each view with the probe already at equilibrium, and clear old particles
+    sim.current.probeV = localPotential(m, pd, sep, rad, t.pos, t.tipY);
+    sim.current.ions = [];
+    sim.current.capture = [];
+    sim.current.eAlpha = 0;
+    setReading(sim.current.probeV);
+  };
+
   /* ---------- derived values ---------- */
-  const E = pd / (sep / 100); // V/m
+  const sphereMode = mode === "sphere";
+  const hasProbe = mode !== "candle";
+  const sp = sphereProbe(pos, tipY, rad);
+  const rCm = Math.hypot(sp.x - SX, sp.y - SY) / PX_PER_CM; // distance from sphere centre
   const x = pos * sep;        // cm from earthed plate
-  const vLocal = pd * pos;
+  const vLocal = localPotential(mode, pd, sep, rad, pos, tipY);
+  const E = sphereMode ? vLocal / (rCm / 100) : pd / (sep / 100); // V/m
   const leafDeg = Math.round((leafAngle(reading) * 180) / Math.PI);
   const status = !flameOn ? "no flame – reading stuck" : settling ? "charge flowing…" : "equilibrium";
 
@@ -1043,15 +1221,18 @@ export default function App() {
       <style>{css}</style>
       <header>
         <h1>The Flame Probe</h1>
-        <p className="sub">Investigating electric potential between parallel plates</p>
+        <p className="sub">Investigating electric potential around charged conductors</p>
       </header>
 
       <div className="tabs">
-        <button className={mode === "probe" ? "on" : ""} onClick={() => setMode("probe")}>
-          Flame probe
+        <button className={mode === "candle" ? "on" : ""} onClick={() => switchMode("candle")}>
+          Candle
         </button>
-        <button className={mode === "candle" ? "on" : ""} onClick={() => setMode("candle")}>
-          Candle between plates
+        <button className={mode === "probe" ? "on" : ""} onClick={() => switchMode("probe")}>
+          Parallel plates
+        </button>
+        <button className={mode === "sphere" ? "on" : ""} onClick={() => switchMode("sphere")}>
+          Sphere
         </button>
       </div>
 
@@ -1097,7 +1278,7 @@ export default function App() {
             <canvas
               ref={canvasRef}
               tabIndex={0}
-              aria-label={mode === "probe"
+              aria-label={hasProbe
                 ? "Diagram: drag the probe in any direction, or use the arrow keys"
                 : "Diagram: drag the candle left or right, or use the arrow keys"}
               onPointerDown={onPointerDown}
@@ -1114,17 +1295,19 @@ export default function App() {
               }}
             />
             <div className="pad" role="group" aria-label="Move the probe">
-              {padBtn("up", "Move up", "▲", mode !== "probe")}
+              {padBtn("up", "Move up", "▲", !hasProbe)}
               {padBtn("left", "Move left", "◀", false)}
               {padBtn("right", "Move right", "▶", false)}
-              {padBtn("down", "Move down", "▼", mode !== "probe")}
+              {padBtn("down", "Move down", "▼", !hasProbe)}
             </div>
           </div>
           <div className="move-row" ref={moveRowRef}>
             <span>
               {mode === "probe"
                 ? "Drag the probe anywhere between the plates. A mainly sideways or up-down drag stays on that line; drag diagonally to move freely."
-                : "Drag the candle left or right."}{" "}
+                : sphereMode
+                  ? "Drag the probe anywhere around the sphere. A mainly sideways or up-down drag stays on that line; drag diagonally to move freely."
+                  : "Drag the candle left or right."}{" "}
               Or hold an arrow in the corner of the diagram, or click the diagram and use the arrow keys.
             </span>
           </div>
@@ -1136,16 +1319,24 @@ export default function App() {
           <div className="panel-row">
           <div className="controls">
             <label className="pd-mobile">
-              <span>p.d. between plates: <b>{pd} V</b></span>
+              <span>EHT output: <b>{pd} V</b></span>
               <input type="range" min="0" max={MAX_PD} step="100" value={pd}
-                onChange={(e) => setPd(+e.target.value)} aria-label="p.d. between plates" />
+                onChange={(e) => setPd(+e.target.value)} aria-label="EHT output p.d." />
             </label>
-            <label>
-              <span>Plate separation d: <b>{sep} cm</b></span>
-              <input className="sep-slider" type="range" min="5" max="12" step="1" value={sep}
-                onChange={(e) => setSep(+e.target.value)} />
-            </label>
-            {mode === "probe" && (
+            {sphereMode ? (
+              <label>
+                <span>Sphere radius a: <b>{rad.toFixed(1)} cm</b></span>
+                <input className="sep-slider" type="range" min="1" max="2.5" step="0.5" value={rad}
+                  onChange={(e) => setRad(+e.target.value)} />
+              </label>
+            ) : (
+              <label>
+                <span>Plate separation d: <b>{sep} cm</b></span>
+                <input className="sep-slider" type="range" min="5" max="12" step="1" value={sep}
+                  onChange={(e) => setSep(+e.target.value)} />
+              </label>
+            )}
+            {hasProbe && (
               <div className="seg" role="group" aria-label="Measuring instrument">
                 <span>Measure with:</span>
                 <button className={meter === "voltmeter" ? "on" : ""} onClick={() => setMeter("voltmeter")}>
@@ -1169,20 +1360,20 @@ export default function App() {
                 <input type="checkbox" checked={showIons} onChange={(e) => setShowIons(e.target.checked)} />
                 Show ions
               </label>
-              {mode === "probe" && (
+              {hasProbe && (
                 <label className="chk">
                   <input type="checkbox" checked={flameOn} onChange={(e) => setFlameOn(e.target.checked)} />
                   Flame lit
                 </label>
               )}
-              {mode === "probe" && (
+              {hasProbe && (
                 <label className="chk">
                   <input type="checkbox" checked={showTransfer} onChange={(e) => setShowTransfer(e.target.checked)} />
                   Show charge transfer
                 </label>
               )}
             </div>
-            {mode === "probe" && (
+            {hasProbe && (
               <div className="disturb">
                 <span>Disturb the probe and watch it recover:</span>
                 <div className="disturb-btns">
@@ -1198,9 +1389,15 @@ export default function App() {
           </div>
 
           <div className="readouts">
-            <div><small>Field strength E = V/d</small><b>{Math.round(E).toLocaleString()} V m⁻¹</b></div>
-            <div><small>Distance from earthed plate</small><b>x = {x.toFixed(1)} cm</b></div>
-            {mode === "probe" ? (
+            <div>
+              <small>{sphereMode ? "Field at probe, E = V/r" : "Field strength E = V/d"}</small>
+              <b>{Math.round(E).toLocaleString()} V m⁻¹</b>
+            </div>
+            <div>
+              <small>{sphereMode ? "Distance from sphere's centre" : "Distance from earthed plate"}</small>
+              <b>{sphereMode ? `r = ${rCm.toFixed(1)} cm` : `x = ${x.toFixed(1)} cm`}</b>
+            </div>
+            {hasProbe ? (
               <>
                 <div><small>Potential at probe position</small><b>{Math.round(vLocal)} V</b></div>
                 {meter === "voltmeter" ? (
@@ -1224,8 +1421,8 @@ export default function App() {
           </div>
 
 
-          {mode === "probe" && (
-            <Graph pd={pd} sep={sep} x={x} reading={reading} meter={meter} />
+          {hasProbe && (
+            <Graph mode={mode} pd={pd} sep={sep} x={x} rCm={rCm} rad={rad} reading={reading} meter={meter} />
           )}
         </aside>
       </div>
@@ -1245,7 +1442,7 @@ export default function App() {
         </div>
         {explainOpen && (
         <div className="explain-body">
-          {mode === "probe" ? <ProbeText meter={meter} /> : <CandleText />}
+          {mode === "probe" ? <ProbeText meter={meter} /> : sphereMode ? <SphereText /> : <CandleText />}
         </div>
       )}
       </section>
@@ -1254,10 +1451,45 @@ export default function App() {
 }
 
 /* ---------- V against x graph ---------- */
-function Graph({ pd, sep, x, reading, meter }) {
+function Graph({ mode, pd, sep, x, rCm, rad, reading, meter }) {
   const gw = 340, gh = 200, ox = 48, oy = 170, pw = 270, ph = 140;
   const sx = (cm) => ox + (cm / 12) * pw;
   const sy = (v) => oy - (v / MAX_PD) * ph;
+  if (mode === "sphere") {
+    // V = Vs inside the sphere, Vs·a/r outside
+    const pts = [];
+    for (let r = 0; r <= 12.001; r += 0.1) pts.push(`${sx(r)},${sy(r < rad ? pd : (pd * rad) / r)}`);
+    return (
+      <div className="graph">
+        <h3>Potential V against distance r from the sphere's centre</h3>
+        <svg viewBox={`0 0 ${gw} ${gh}`}>
+          {[0, 1000, 2000, 3000, 4000, 5000].map((v) => (
+            <g key={v}>
+              <line x1={ox} x2={ox + pw} y1={sy(v)} y2={sy(v)} stroke="#e2e8f0" />
+              <text x={ox - 6} y={sy(v) + 4} textAnchor="end" fontSize="10" fill="#64748b">{v}</text>
+            </g>
+          ))}
+          {[0, 2, 4, 6, 8, 10, 12].map((c) => (
+            <text key={c} x={sx(c)} y={oy + 14} textAnchor="middle" fontSize="10" fill="#64748b">{c}</text>
+          ))}
+          <line x1={ox} y1={oy} x2={ox + pw} y2={oy} stroke="#334155" />
+          <line x1={ox} y1={oy} x2={ox} y2={oy - ph} stroke="#334155" />
+          <line x1={sx(rad)} y1={oy} x2={sx(rad)} y2={oy - ph} stroke="#64748b" strokeDasharray="3 3" />
+          <text x={sx(rad)} y={oy - ph - 4} textAnchor="middle" fontSize="9" fill="#475569">surface (r = a)</text>
+          <polyline points={pts.join(" ")} fill="none" stroke="#16a34a" strokeWidth="2" />
+          {rCm <= 12 && <circle cx={sx(rCm)} cy={sy(reading)} r="5" fill="#dc2626" />}
+          <text x={ox + pw / 2} y={gh - 4} textAnchor="middle" fontSize="11" fill="#334155">r / cm</text>
+          <text x="12" y={oy - ph / 2} textAnchor="middle" fontSize="11" fill="#334155"
+            transform={`rotate(-90 12 ${oy - ph / 2})`}>V / V</text>
+        </svg>
+        <p className="note">
+          V = V<sub>s</sub>a/r, so <b>V ∝ 1/r</b>: at r = 2a the potential is half the sphere's.
+          It is the field, E = V/r ∝ 1/r², that follows the inverse square law.
+          {meter === "electroscope" && " (An electroscope needs calibrating before it can give values.)"}
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="graph">
       <h3>Potential V against distance x from the earthed plate</h3>
@@ -1384,6 +1616,67 @@ function ProbeText({ meter }) {
         </li>
         <li>Doubling V or halving d doubles E — try it with the controls.</li>
       </ul>
+    </>
+  );
+}
+
+function SphereText() {
+  return (
+    <>
+      <h2>A charged sphere</h2>
+      <ol>
+        <li>
+          <b>The sphere is connected to the + terminal of the EHT supply</b>, so all of it is at
+          the supply's potential, V<sub>s</sub>. The − terminal is earthed, so 0 V is earth: the
+          room around the sphere.
+        </li>
+        <li>
+          <b>Outside, the sphere acts like a point charge at its centre.</b> Its charge Q spreads
+          evenly over the surface, and the field outside is radial: E = Q/(4πε₀r²).
+        </li>
+        <li>
+          <b>The potential falls as 1/r:</b> V = Q/(4πε₀r). At the surface V<sub>s</sub> = Q/(4πε₀a),
+          so outside the sphere V = V<sub>s</sub>a/r.
+        </li>
+        <li>
+          <b>The flame probe works exactly as between the plates:</b> ions flow to or from the tip
+          until it matches the potential around it.
+        </li>
+      </ol>
+      <h2>Inverse square or inverse proportion?</h2>
+      <ul>
+        <li>The <b>field strength</b> follows the inverse square law, E ∝ 1/r²: double r and E falls to a quarter.</li>
+        <li>The <b>potential</b> is inversely proportional to r, V ∝ 1/r: double r and V halves.</li>
+        <li>
+          They are linked by E = −dV/dr: the V–r graph is steepest close to the sphere, where the
+          field is strongest. Outside this sphere, E = V/r at every point.
+        </li>
+        <li>Inside the conducting sphere there is no field, so V = V<sub>s</sub> everywhere inside.</li>
+      </ul>
+      <h2>Things to try</h2>
+      <ul>
+        <li>
+          Put the probe on the dashed circles at r = 2a, 3a and 4a: the reading falls to ½, ⅓ and ¼
+          of V<sub>s</sub>.
+        </li>
+        <li>
+          Move the probe around one dashed circle: the reading doesn't change. The equipotentials are
+          spherical shells, and the radial field lines cross them at right angles.
+        </li>
+        <li>
+          Record V and r, then plot V against 1/r: a straight line through the origin, with gradient
+          V<sub>s</sub>a = Q/(4πε₀).
+        </li>
+        <li>
+          Change the radius: at the same V<sub>s</sub>, a bigger sphere holds more charge
+          (Q = 4πε₀aV<sub>s</sub>), so V is larger at any given r.
+        </li>
+      </ul>
+      <p className="safety">
+        In a real lab the earthed bench, walls and stand are not infinitely far away, and the probe
+        disturbs the field slightly, so readings fall a little below V<sub>s</sub>a/r, especially far
+        from the sphere. The EHT supply must include its current-limiting resistor (around 50 MΩ).
+      </p>
     </>
   );
 }
