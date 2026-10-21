@@ -1585,8 +1585,8 @@ function ProbeText({ meter }) {
           so it doesn't disturb the reading.
         </li>
         <li>
-          <b>Turn the flame off</b> and move the probe: the reading no longer follows. Without
-          ions the air is an insulator, so charge can't flow to the probe.
+          <b>Turn the flame off</b> and move the probe: the reading no longer follows and stays at
+          its last value. Without ions the air is an insulator, so charge can't flow to the probe.
         </li>
       </ol>
       <h2>Where does the charge actually go?</h2>
@@ -1610,18 +1610,20 @@ function ProbeText({ meter }) {
           Move the probe back and forth and watch the electrons in the lead. The metal is already
           full of free electrons, so when charge flows they <em>all</em> start drifting at once,
           along the whole lead, not just from one end. They all drift the same way at any instant,
-          and reverse together when the flow reverses. Their spacing never changes; only their
-          speed does, because I = nAvq and the number of free electrons n is fixed. Watch them
-          race just after you disturb the probe, then slow to a stop as it reaches equilibrium.
+          and reverse together when the flow reverses. Their spacing never changes, because the
+          number of free electrons n is fixed. Only their speed does, in proportion to the
+          current (I = nAvq). Watch them race just after you disturb the probe, then slow to a
+          stop as it reaches equilibrium. (Real drift speeds are tiny; the animation exaggerates
+          them so you can see them.)
         </li>
         <li>
-          Only a tiny charge is needed (picocoulombs), because the probe has a small capacitance:
+          Only a tiny charge is needed (nanocoulombs), because the probe has a small capacitance:
           Q = CV. Once the probe matches the local potential there is no net flow.
         </li>
         <li>
           <b>The resistor in the lead</b> limits the current if the probe touches the + plate,
-          protecting the meter (and you). At equilibrium no current flows through it, so there is
-          no p.d. across it and it doesn't change the reading.
+          protecting the meter (and you). At equilibrium the current is negligible, so
+          there is almost no p.d. across it and it doesn't change the reading.
         </li>
         {meter === "electroscope" ? (
           <li>
@@ -1645,14 +1647,14 @@ function ProbeText({ meter }) {
         <li>So the potential gradient is constant: the field between the plates is uniform, with E = V/d.</li>
         <li>
           Move the probe <b>up and down</b>: the reading stays the same, because the probe stays on
-          one equipotential. (Very close to the plate edges the field fringes and this breaks down;
-          that is not modelled here.)
+          one equipotential. (The field lines bulge near the plate edges, but the reading near the edges
+          is not modelled here.)
         </li>
         <li>Equipotentials are parallel to the plates; field lines are perpendicular to them.</li>
         <li>
           The earthed plate is at 0 V but still carries a <b>negative charge</b>, equal and opposite
-          to the charge on the + plate. Electrons are drawn up from earth by the + plate. Earthing
-          fixes the potential, not the charge, and the field lines need these charges to end on.
+          to the charge on the + plate. The supply pumps electrons from the + plate onto it, with earth acting as a
+          reservoir. Earthing fixes the potential, not the charge, and the field lines need these charges to end on.
         </li>
         <li>Doubling V or halving d doubles E — try it with the controls.</li>
       </ul>
@@ -1696,7 +1698,7 @@ function SphereText() {
       <h2>Things to try</h2>
       <ul>
         <li>
-          Put the probe on the dashed circles at r = 2a, 3a and 4a: the reading falls to ½, ⅓ and ¼
+          Put the probe on the dashed circles at r = 2a, 3a, 4a …: the reading falls to ½, ⅓, ¼ …
           of V<sub>s</sub>.
         </li>
         <li>
@@ -1748,7 +1750,7 @@ function CandleText() {
         </li>
         <li>
           <b>At high p.d. the flame splits</b>: a larger part is pulled towards the negative
-          plate and a smaller part towards the positive plate. Try it above about 2500 V at d = 10 cm.
+          plate and a smaller part towards the positive plate. Try it above about 2300 V at d = 10 cm.
         </li>
       </ol>
       <h2>Things to try</h2>
