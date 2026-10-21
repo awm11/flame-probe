@@ -504,11 +504,14 @@ export default function App() {
       }
 
       // equipotentials around the sphere: r = 2a, 3a, 4a … are at Vs/2, Vs/3, Vs/4 …
+      // which shells to draw: Vs/2 … Vs/6, then sparser further out, reaching the
+      // edge of the probe's range whatever the sphere's radius
+      const eqN = [2, 3, 4, 5, 6, 8, 10, 12, 15, 20].filter((n) => n * aPx <= 490);
       if (p.showEq && sphere) {
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 1.2;
         ctx.strokeStyle = "rgba(22,163,74,0.6)";
-        for (let n = 2; n <= 6; n++) {
+        for (const n of eqN) {
           ctx.beginPath();
           ctx.arc(SX, SY, n * aPx, 0, Math.PI * 2);
           ctx.stroke();
@@ -517,7 +520,7 @@ export default function App() {
         ctx.font = "10.5px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        for (let n = 2; n <= 6; n++) {
+        for (const n of eqN) {
           // label each circle where it crosses a line 25° below horizontal, to the right
           const x = SX + n * aPx * Math.cos(0.44), y = SY + n * aPx * Math.sin(0.44);
           if (x > rightX - 20 || y > PLATE_BOTTOM + 30) continue;
