@@ -19,6 +19,8 @@ const PLATE_TOP = 60;
 const PLATE_BOTTOM = 357;   // plates 297 tall
 const PLATE_W = 16;
 const MAX_PD = 5000;
+const START_PD = 2000, START_POS = 0.5; // starting p.d. and probe position
+const START_V = START_PD * START_POS;    // probe starts already at equilibrium
 
 const XC = 312;             // centre line of the plates (shifted left)
 const WIRE_NEG_Y = 4;      // − supply wire runs along here (to the far, earthed plate)
@@ -194,16 +196,16 @@ const leafAngle = (v) => (55 * Math.sqrt(clamp(v / MAX_PD, 0, 1)) * Math.PI) / 1
 export default function App() {
   const [mode, setMode] = useState("probe"); // "probe" | "candle"
   const [meter, setMeter] = useState("voltmeter"); // "voltmeter" | "electroscope"
-  const [pd, setPd] = useState(2000);
+  const [pd, setPd] = useState(START_PD);
   const [sep, setSep] = useState(10);
-  const [pos, setPos] = useState(0.5);
+  const [pos, setPos] = useState(START_POS);
   const [tipY, setTipY] = useState(TIP_DEFAULT);
   const [showEq, setShowEq] = useState(true);
   const [showField, setShowField] = useState(false);
   const [flameOn, setFlameOn] = useState(true);
   const [showTransfer, setShowTransfer] = useState(true);
   const [showIons, setShowIons] = useState(true);
-  const [reading, setReading] = useState(0);
+  const [reading, setReading] = useState(START_V);
   const [settling, setSettling] = useState(false);
   const [hover, setHover] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -240,7 +242,7 @@ export default function App() {
   const canvasRef = useRef(null);
   const drag = useRef(null); // active drag gesture (see pointer handlers)
   const sim = useRef({
-    ions: [], probeV: 0, t: 0, spawnAcc: 0, lastUi: 0,
+    ions: [], probeV: START_V, t: 0, spawnAcc: 0, lastUi: 0,
     capture: [], flashes: [], capAcc: 0, flux: 0, dV: 0,
     ePhase: 0, eAlpha: 0, eDir: 1, // evenly spaced row of drifting electrons in the lead
   });
