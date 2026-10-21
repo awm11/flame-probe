@@ -47,11 +47,11 @@ const ES_CAP = 292;         // electroscope cap height (case bottom at 396, clea
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // sphere view: a charged metal sphere hanging from its supply lead
-const SX = 196, SY = 150;               // sphere centre (canvas units)
-const SPH_XMIN = 40, SPH_XMAX = 545;    // horizontal range of the probe in the sphere view
+const SX = 128, SY = 150;               // sphere centre (canvas units)
+const SPH_XMIN = 30, SPH_XMAX = 610;    // horizontal range of the probe in the sphere view
 const SPH_TIP_MIN = 60, SPH_TIP_MAX = 330; // vertical range of the probe tip in the sphere view
 const SPH_START_POS = (SX + 6 * PX_PER_CM - SPH_XMIN) / (SPH_XMAX - SPH_XMIN); // r = 6 cm
-const EARTH_X = 60;                     // where the supply's − terminal is earthed (sphere view)
+const EARTH_X = 420;                     // where the supply's − terminal is earthed (sphere view)
 
 /* probe tip in the sphere view. The tip may touch the sphere but not enter it, and it
    can't sit directly above the sphere (the rod below the tip would pass through it). */
@@ -64,6 +64,8 @@ function sphereProbe(pos, tipY, aCm) {
     if (rr < 1e-6) { x = SX + a; y = SY; } else { x = SX + (dx * a) / rr; y = SY + (dy * a) / rr; }
   }
   if (y < SY && Math.abs(x - SX) < a) x = x < SX ? SX - a : SX + a; // above the sphere
+  if (x > EHT_X - 18) y = Math.max(y, 190); // flame stays below the EHT supply
+  if (x > RES_X0 - 14) y = Math.min(y, 290); // handle stays above the resistor and lead
   return { x, y };
 }
 // limits for the probe/candle position in each view
@@ -311,7 +313,7 @@ export default function App() {
       const sphere = p.mode === "sphere";
       const plates = !sphere;
       let { gap, leftX, rightX } = geometry(p.sep);
-      if (sphere) { leftX = 40; rightX = 560; } // bounds for ions and labels in the sphere view
+      if (sphere) { leftX = 10; rightX = 640; } // bounds for ions and labels in the sphere view
       const aPx = p.rad * PX_PER_CM;
       // normalised field strength: 1 = 1000 V across 10 cm (10 kV/m)
       const e = (p.pd / 1000) / (p.sep / 10);
@@ -583,9 +585,9 @@ export default function App() {
         ctx.fillStyle = "#b91c1c";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        // label at the upper left, where the probe can't reach (it can't go above the sphere)
-        ctx.textAlign = "right";
-        haloText(ctx, `+${p.pd} V`, SX - aPx * 0.72 - 2, SY - aPx * 0.72 - 6);
+        // label just above the sphere, beside its lead (the probe can't go above the sphere)
+        ctx.textAlign = "left";
+        haloText(ctx, `+${p.pd} V`, SX + 8, SY - aPx - 10);
         ctx.textAlign = "center";
         // r: dashed line from the centre to the probe tip
         ctx.save();
@@ -1023,7 +1025,7 @@ export default function App() {
 
         if (flowing) {
           const lx = clamp(objX, leftX + 95, rightX - 95);
-          const ly = tipY > PLATE_TOP + 120 ? tipY - 72 : tipY + 66;
+          const ly = tipY > PLATE_TOP + 120 ? tipY - 72 : handleBot(tipY) + 16; // above the tip, or below the handle
           ctx.font = "bold 12px system-ui, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -1476,12 +1478,13 @@ export default function App() {
 /* ---------- V against x graph ---------- */
 function Graph({ mode, pd, sep, x, rCm, rad, reading, meter }) {
   const gw = 340, gh = 200, ox = 48, oy = 170, pw = 270, ph = 140;
-  const sx = (cm) => ox + (cm / 12) * pw;
+  const rMax = mode === "sphere" ? 15 : 12;
+  const sx = (cm) => ox + (cm / rMax) * pw;
   const sy = (v) => oy - (v / MAX_PD) * ph;
   if (mode === "sphere") {
     // V = Vs inside the sphere, Vs·a/r outside
     const pts = [];
-    for (let r = 0; r <= 12.001; r += 0.1) pts.push(`${sx(r)},${sy(r < rad ? pd : (pd * rad) / r)}`);
+    for (let r = 0; r <= 15.001; r += 0.1) pts.push(`${sx(r)},${sy(r < rad ? pd : (pd * rad) / r)}`);
     return (
       <div className="graph">
         <h3>Potential V against distance r from the sphere's centre</h3>
@@ -1492,7 +1495,7 @@ function Graph({ mode, pd, sep, x, rCm, rad, reading, meter }) {
               <text x={ox - 6} y={sy(v) + 4} textAnchor="end" fontSize="10" fill="#64748b">{v}</text>
             </g>
           ))}
-          {[0, 2, 4, 6, 8, 10, 12].map((c) => (
+          {[0, 3, 6, 9, 12, 15].map((c) => (
             <text key={c} x={sx(c)} y={oy + 14} textAnchor="middle" fontSize="10" fill="#64748b">{c}</text>
           ))}
           <line x1={ox} y1={oy} x2={ox + pw} y2={oy} stroke="#334155" />
@@ -1500,7 +1503,7 @@ function Graph({ mode, pd, sep, x, rCm, rad, reading, meter }) {
           <line x1={sx(rad)} y1={oy} x2={sx(rad)} y2={oy - ph} stroke="#64748b" strokeDasharray="3 3" />
           <text x={sx(rad)} y={oy - ph - 4} textAnchor="middle" fontSize="9" fill="#475569">surface (r = a)</text>
           <polyline points={pts.join(" ")} fill="none" stroke="#16a34a" strokeWidth="2" />
-          {rCm <= 12 && <circle cx={sx(rCm)} cy={sy(reading)} r="5" fill="#dc2626" />}
+          {rCm <= 15 && <circle cx={sx(rCm)} cy={sy(reading)} r="5" fill="#dc2626" />}
           <text x={ox + pw / 2} y={gh - 4} textAnchor="middle" fontSize="11" fill="#334155">r / cm</text>
           <text x="12" y={oy - ph / 2} textAnchor="middle" fontSize="11" fill="#334155"
             transform={`rotate(-90 12 ${oy - ph / 2})`}>V / V</text>
