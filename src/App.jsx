@@ -51,7 +51,7 @@ const SX = 196, SY = 150;               // sphere centre (canvas units)
 const SPH_XMIN = 30, SPH_XMAX = 610;    // horizontal range of the probe in the sphere view
 const SPH_TIP_MIN = 60, SPH_TIP_MAX = 330; // vertical range of the probe tip in the sphere view
 const SPH_START_POS = (SX + 6 * PX_PER_CM - SPH_XMIN) / (SPH_XMAX - SPH_XMIN); // r = 6 cm
-const EARTH_X = 420;                     // where the supply's − terminal is earthed (sphere view)
+const EARTH_X = 60;                      // where the supply's − terminal is earthed (sphere view)
 
 /* probe tip in the sphere view. The tip may touch the sphere but not enter it, and it
    can't sit directly above the sphere (the rod below the tip would pass through it). */
