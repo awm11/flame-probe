@@ -47,7 +47,7 @@ const ES_CAP = 292;         // electroscope cap height (case bottom at 396, clea
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // sphere view: a charged metal sphere hanging from its supply lead
-const SX = 128, SY = 150;               // sphere centre (canvas units)
+const SX = 196, SY = 150;               // sphere centre (canvas units)
 const SPH_XMIN = 30, SPH_XMAX = 610;    // horizontal range of the probe in the sphere view
 const SPH_TIP_MIN = 60, SPH_TIP_MAX = 330; // vertical range of the probe tip in the sphere view
 const SPH_START_POS = (SX + 6 * PX_PER_CM - SPH_XMIN) / (SPH_XMAX - SPH_XMIN); // r = 6 cm
