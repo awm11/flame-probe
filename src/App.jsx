@@ -1662,7 +1662,7 @@ function ProbeText({ meter }) {
           to the charge on the + plate. The supply pumps electrons from the + plate onto it, with earth acting as a
           reservoir. Earthing fixes the potential, not the charge, and the field lines need these charges to end on.
         </li>
-        <li>Doubling V or halving d doubles E — try it with the controls.</li>
+        <li>Doubling V or halving d doubles E. Try it with the controls.</li>
       </ul>
     </>
   );
@@ -1761,9 +1761,9 @@ function CandleText() {
       </ol>
       <h2>Things to try</h2>
       <ul>
-        <li>Set the p.d. to 0 V — the flame stands upright and ions just rise and recombine.</li>
+        <li>Set the p.d. to 0 V: the flame stands upright and ions just rise and recombine.</li>
         <li>Increase the p.d. and watch the deflection grow, then the split appear.</li>
-        <li>Reduce d at a fixed p.d. — E = V/d increases, so the effect is stronger.</li>
+        <li>Reduce d at a fixed p.d.: E = V/d increases, so the effect is stronger.</li>
       </ul>
       <p className="safety">
         This shows that a flame contains both positive and negative charges, which is
