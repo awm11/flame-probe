@@ -15,12 +15,16 @@
   display: block;
 }
 
-/* Header: title on the left, logo at the right end of the row */
+/* Header: title centred, logo pinned to the right end of the row */
 .fp-app > header.has-brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  position: relative;
+  padding: 0 64px; /* keeps the centred text clear of the logo */
+}
+.fp-app > header.has-brand .awm-logo-link {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  margin-top: -22px;
 }
 
 /* Support links: one centred row at the bottom of the page */
