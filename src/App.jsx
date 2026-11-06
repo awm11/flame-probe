@@ -644,12 +644,12 @@ export default function App() {
         const outside = leftX - PLATE_W - 6 - lw >= SHIFT_X + 4;
         ctx.textAlign = outside ? "right" : "left";
         const lx = outside ? leftX - PLATE_W - 6 : leftX + 6;
-        haloText(ctx, "0 V", lx, PLATE_TOP + 172);
-        haloText(ctx, "(earthed)", lx, PLATE_TOP + 188);
+        haloText(ctx, "0 V", lx, PLATE_TOP + 144);
+        haloText(ctx, "(earthed)", lx, PLATE_TOP + 160);
       }
       ctx.fillStyle = "#b91c1c";
       ctx.textAlign = "left";
-      ctx.fillText(`+${p.pd} V`, rightX + PLATE_W + 6, PLATE_TOP + 172);
+      ctx.fillText(`+${p.pd} V`, rightX + PLATE_W + 6, PLATE_TOP + 153);
       }
 
       // separation marker along the very bottom
