@@ -10,21 +10,21 @@
 .awm-logo-link:hover,
 .awm-logo-link:focus-visible { transform: scale(1.15) rotate(10deg); }
 .awm-logo-link img {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: block;
 }
 
 /* Header: title centred, logo pinned to the right end of the row */
 .fp-app > header.has-brand {
   position: relative;
-  padding: 0 64px; /* keeps the centred text clear of the logo */
+  padding: 0 72px; /* keeps the centred text clear of the logo */
 }
 .fp-app > header.has-brand .awm-logo-link {
   position: absolute;
-  right: 0;
+  right: 14px;
   top: 50%;
-  margin-top: -22px;
+  margin-top: -14px;
 }
 
 /* Support links: one centred row at the bottom of the page */
