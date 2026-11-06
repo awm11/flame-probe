@@ -1778,9 +1778,10 @@ const css = `
 .fp-app { font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: #0f172a;
   background: #f1f5f9; min-height: 100vh; padding: 16px; box-sizing: border-box; }
 .fp-app * { box-sizing: border-box; }
-.fp-app header h1 { margin: 0; font-size: 24px; }
-.fp-app .sub { margin: 2px 0 12px; color: #475569; }
-.fp-app .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.fp-app header { text-align: center; padding-top: 4px; }
+.fp-app header h1 { margin: 0; font-size: 28px; letter-spacing: -0.01em; }
+.fp-app .sub { margin: 4px 0 14px; color: #475569; }
+.fp-app .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; justify-content: center; }
 .fp-app .tabs button { border: 1px solid #cbd5e1; background: #fff; padding: 8px 16px;
   border-radius: 999px; font-size: 14px; cursor: pointer; }
 .fp-app .tabs button.on { background: #0f172a; color: #fff; border-color: #0f172a; }
